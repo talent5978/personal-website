@@ -25,6 +25,7 @@ export default function RootLayout({
                             <Link href="/" className="hover:text-blue-200">首页</Link>
                             <Link href="/game" className="hover:text-blue-200">小游戏</Link>
                             <Link href="/leaderboard" className="hover:text-blue-200">排行榜</Link>
+                            <Link href="/posts" className="hover:text-blue-200">社区论坛</Link>
                         </div>
                     </div>
                 </nav>

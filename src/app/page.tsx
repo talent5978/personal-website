@@ -40,7 +40,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="grid md:grid-cols-3 gap-6">
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 rounded-lg text-white">
             <h3 className="text-2xl font-bold mb-4">🎮 小游戏</h3>
             <p className="mb-4">
@@ -64,6 +64,19 @@ export default function Home() {
               className="inline-block bg-white text-green-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
             >
               查看排行榜
+            </a>
+          </div>
+
+          <div className="bg-gradient-to-r from-orange-500 to-red-600 p-6 rounded-lg text-white">
+            <h3 className="text-2xl font-bold mb-4">💬 社区论坛</h3>
+            <p className="mb-4">
+              分享你的想法，与大家交流讨论，发表帖子和留言！
+            </p>
+            <a
+              href="/posts"
+              className="inline-block bg-white text-orange-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            >
+              进入论坛
             </a>
           </div>
         </div>
