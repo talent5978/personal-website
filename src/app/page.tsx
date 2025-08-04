@@ -21,7 +21,7 @@ export default function Home() {
             </p>
             <p className="text-gray-700 mb-4">
               这个网站使用 Next.js + TypeScript + Tailwind CSS 构建，
-              后端使用 SQLite 数据库存储游戏分数。
+              后端使用 PostgreSQL 云数据库存储游戏分数。
             </p>
             <p className="text-gray-700">
               欢迎体验我的小游戏，挑战排行榜！
@@ -34,7 +34,7 @@ export default function Home() {
               <li>• 前端：Next.js + React + TypeScript</li>
               <li>• 样式：Tailwind CSS</li>
               <li>• 后端：Next.js API Routes</li>
-              <li>• 数据库：SQLite + Prisma ORM</li>
+              <li>• 数据库：PostgreSQL + Prisma ORM</li>
               <li>• 部署：Vercel</li>
             </ul>
           </div>
