@@ -80,27 +80,34 @@ export default function Game() {
         setSnake(newSnake)
     }, [snake, direction, food, gameOver, gameStarted, score, checkCollision, generateFood])
 
+    // 键盘和按钮方向控制
+    const handleDirection = (dir: string) => {
+        if (!gameStarted) return
+        if (dir === 'UP' && direction !== 'DOWN') setDirection('UP')
+        if (dir === 'DOWN' && direction !== 'UP') setDirection('DOWN')
+        if (dir === 'LEFT' && direction !== 'RIGHT') setDirection('LEFT')
+        if (dir === 'RIGHT' && direction !== 'LEFT') setDirection('RIGHT')
+    }
+
     // 键盘控制
     useEffect(() => {
         const handleKeyPress = (e: KeyboardEvent) => {
             if (!gameStarted) return
-
             switch (e.key) {
                 case 'ArrowUp':
-                    if (direction !== 'DOWN') setDirection('UP')
+                    handleDirection('UP')
                     break
                 case 'ArrowDown':
-                    if (direction !== 'UP') setDirection('DOWN')
+                    handleDirection('DOWN')
                     break
                 case 'ArrowLeft':
-                    if (direction !== 'RIGHT') setDirection('LEFT')
+                    handleDirection('LEFT')
                     break
                 case 'ArrowRight':
-                    if (direction !== 'LEFT') setDirection('RIGHT')
+                    handleDirection('RIGHT')
                     break
             }
         }
-
         window.addEventListener('keydown', handleKeyPress)
         return () => window.removeEventListener('keydown', handleKeyPress)
     }, [direction, gameStarted])
@@ -196,7 +203,6 @@ export default function Game() {
                                 }}
                             />
                         ))}
-
                         {/* 食物 */}
                         <div
                             className="absolute bg-red-500 rounded-full"
@@ -208,6 +214,27 @@ export default function Game() {
                             }}
                         />
                     </div>
+                </div>
+                {/* 移动端方向按钮 */}
+                <div className="flex flex-col items-center mt-4 space-y-2 sm:hidden">
+                    <button
+                        className="w-16 h-16 bg-blue-500 text-white rounded-full text-2xl active:bg-blue-700"
+                        onClick={() => handleDirection('UP')}
+                    >↑</button>
+                    <div className="flex space-x-8">
+                        <button
+                            className="w-16 h-16 bg-blue-500 text-white rounded-full text-2xl active:bg-blue-700"
+                            onClick={() => handleDirection('LEFT')}
+                        >←</button>
+                        <button
+                            className="w-16 h-16 bg-blue-500 text-white rounded-full text-2xl active:bg-blue-700"
+                            onClick={() => handleDirection('RIGHT')}
+                        >→</button>
+                    </div>
+                    <button
+                        className="w-16 h-16 bg-blue-500 text-white rounded-full text-2xl active:bg-blue-700"
+                        onClick={() => handleDirection('DOWN')}
+                    >↓</button>
                 </div>
 
                 <div className="text-center">
