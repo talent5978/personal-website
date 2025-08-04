@@ -86,35 +86,32 @@ export default function Leaderboard() {
                 <div className="text-center mb-8">
                     <h1 className="text-4xl font-bold text-gray-800 mb-4">🏆 排行榜</h1>
                     <p className="text-gray-600 mb-6">看看谁是最强玩家！</p>
-                    
+
                     <div className="flex justify-center space-x-4 mb-6">
                         <button
                             onClick={() => setSelectedGame('all')}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                                selectedGame === 'all'
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${selectedGame === 'all'
                                     ? 'bg-blue-600 text-white'
                                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
+                                }`}
                         >
                             全部游戏
                         </button>
                         <button
                             onClick={() => setSelectedGame('snake')}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                                selectedGame === 'snake'
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${selectedGame === 'snake'
                                     ? 'bg-green-600 text-white'
                                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
+                                }`}
                         >
                             🐍 贪吃蛇
                         </button>
                         <button
                             onClick={() => setSelectedGame('survivor')}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                                selectedGame === 'survivor'
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${selectedGame === 'survivor'
                                     ? 'bg-red-600 text-white'
                                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
+                                }`}
                         >
                             ⚔️ 幸存者
                         </button>
@@ -175,8 +172,8 @@ export default function Leaderboard() {
                                                         <span className="text-2xl mr-2">🥉</span>
                                                     )}
                                                     <span className={`font-semibold ${index === 0 ? 'text-yellow-600' :
-                                                            index === 1 ? 'text-gray-500' :
-                                                                index === 2 ? 'text-orange-600' : 'text-gray-900'
+                                                        index === 1 ? 'text-gray-500' :
+                                                            index === 2 ? 'text-orange-600' : 'text-gray-900'
                                                         }`}>
                                                         #{index + 1}
                                                     </span>
