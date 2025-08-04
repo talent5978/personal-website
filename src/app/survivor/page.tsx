@@ -222,7 +222,7 @@ export default function SurvivorGame() {
 
         const projectiles: Projectile[] = []
 
-                // 根据武器类型生成不同的投射物
+        // 根据武器类型生成不同的投射物
         switch (weapon.id) {
             case 'whip':
                 // 鞭子：近距离扇形攻击
@@ -240,7 +240,7 @@ export default function SurvivorGame() {
                     })
                 }
                 break
-            
+
             case 'magicWand':
                 // 魔法杖：直线魔法弹
                 const targetX = player.x + (Math.random() - 0.5) * 200
@@ -248,7 +248,7 @@ export default function SurvivorGame() {
                 const dx = targetX - player.x
                 const dy = targetY - player.y
                 const distance = Math.sqrt(dx * dx + dy * dy) || 1
-                
+
                 projectiles.push({
                     id: Date.now(),
                     x: player.x,
@@ -285,7 +285,7 @@ export default function SurvivorGame() {
                 const lightningDx = lightningTargetX - player.x
                 const lightningDy = lightningTargetY - player.y
                 const lightningDistance = Math.sqrt(lightningDx * lightningDx + lightningDy * lightningDy) || 1
-                
+
                 projectiles.push({
                     id: Date.now(),
                     x: player.x,
@@ -305,7 +305,7 @@ export default function SurvivorGame() {
                 const iceDx = iceTargetX - player.x
                 const iceDy = iceTargetY - player.y
                 const iceDistance = Math.sqrt(iceDx * iceDx + iceDy * iceDy) || 1
-                
+
                 projectiles.push({
                     id: Date.now(),
                     x: player.x,
@@ -504,7 +504,7 @@ export default function SurvivorGame() {
             ctx.fillRect(enemy.x - enemy.size, enemy.y - enemy.size - 8, enemy.size * 2 * enemyHealthPercentage, 3)
         })
 
-                // 绘制投射物
+        // 绘制投射物
         gameState.projectiles.forEach(projectile => {
             switch (projectile.weaponId) {
                 case 'whip':
@@ -525,7 +525,7 @@ export default function SurvivorGame() {
                 default:
                     ctx.fillStyle = '#ffffff'
             }
-            
+
             ctx.beginPath()
             ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2)
             ctx.fill()
@@ -593,7 +593,7 @@ export default function SurvivorGame() {
                     <p className="text-gray-300 mb-6 text-lg">
                         使用 WASD 或方向键移动，自动攻击敌人，生存越久分数越高！
                     </p>
-                    
+
                     {/* 游戏状态显示 */}
                     {gameState.gameStarted && !gameState.gameOver && (
                         <div className="bg-black bg-opacity-50 rounded-lg p-4 mb-4 inline-block">
@@ -617,7 +617,7 @@ export default function SurvivorGame() {
                     </div>
                 </div>
 
-                                <div className="text-center">
+                <div className="text-center">
                     {!gameState.gameStarted && !gameState.gameOver && (
                         <button
                             onClick={startGame}
@@ -634,7 +634,7 @@ export default function SurvivorGame() {
                                 <p className="text-purple-300 text-lg">🎯 最终分数: <span className="text-yellow-400 font-bold">{gameState.score}</span></p>
                                 <p className="text-purple-300 text-lg">⏱️ 生存时间: <span className="text-cyan-400 font-bold">{Math.floor(gameState.time / 60)}:{(gameState.time % 60).toString().padStart(2, '0')}</span></p>
                             </div>
-                            
+
                             {!gameState.showSubmitForm ? (
                                 <button
                                     onClick={() => setGameState(prev => ({ ...prev, showSubmitForm: true }))}
@@ -667,7 +667,7 @@ export default function SurvivorGame() {
                                     </div>
                                 </div>
                             )}
-                            
+
                             <button
                                 onClick={startGame}
                                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 mt-4"
