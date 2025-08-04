@@ -60,17 +60,38 @@ interface GameState {
 const WEAPONS = {
     whip: {
         name: '鞭子',
-        damage: 20,
+        damage: 25,
         range: 80,
-        cooldown: 500,
-        maxLevel: 3
+        cooldown: 400,
+        maxLevel: 5
     },
     magicWand: {
         name: '魔法杖',
-        damage: 15,
-        range: 120,
-        cooldown: 300,
+        damage: 20,
+        range: 150,
+        cooldown: 250,
+        maxLevel: 5
+    },
+    fireball: {
+        name: '火球术',
+        damage: 35,
+        range: 200,
+        cooldown: 600,
+        maxLevel: 4
+    },
+    lightning: {
+        name: '闪电链',
+        damage: 30,
+        range: 180,
+        cooldown: 800,
         maxLevel: 3
+    },
+    iceSpike: {
+        name: '冰锥',
+        damage: 40,
+        range: 120,
+        cooldown: 500,
+        maxLevel: 4
     }
 }
 
@@ -88,7 +109,10 @@ export default function SurvivorGame() {
         enemies: [],
         weapons: [
             { ...WEAPONS.whip, id: 'whip', lastFired: 0, level: 1 },
-            { ...WEAPONS.magicWand, id: 'magicWand', lastFired: 0, level: 1 }
+            { ...WEAPONS.magicWand, id: 'magicWand', lastFired: 0, level: 1 },
+            { ...WEAPONS.fireball, id: 'fireball', lastFired: 0, level: 1 },
+            { ...WEAPONS.lightning, id: 'lightning', lastFired: 0, level: 1 },
+            { ...WEAPONS.iceSpike, id: 'iceSpike', lastFired: 0, level: 1 }
         ],
         projectiles: [],
         score: 0,
@@ -143,7 +167,10 @@ export default function SurvivorGame() {
             projectiles: [],
             weapons: [
                 { ...WEAPONS.whip, id: 'whip', lastFired: 0, level: 1 },
-                { ...WEAPONS.magicWand, id: 'magicWand', lastFired: 0, level: 1 }
+                { ...WEAPONS.magicWand, id: 'magicWand', lastFired: 0, level: 1 },
+                { ...WEAPONS.fireball, id: 'fireball', lastFired: 0, level: 1 },
+                { ...WEAPONS.lightning, id: 'lightning', lastFired: 0, level: 1 },
+                { ...WEAPONS.iceSpike, id: 'iceSpike', lastFired: 0, level: 1 }
             ]
         }))
     }
@@ -152,7 +179,7 @@ export default function SurvivorGame() {
     const spawnEnemy = useCallback(() => {
         const side = Math.floor(Math.random() * 4)
         let x = 0, y = 0
-        
+
         switch (side) {
             case 0: // 上
                 x = Math.random() * 800
@@ -176,10 +203,10 @@ export default function SurvivorGame() {
             id: Date.now() + Math.random(),
             x,
             y,
-            size: 15 + Math.random() * 10,
-            speed: 1 + Math.random() * 2,
-            health: 30 + Math.floor(gameState.time / 30) * 10,
-            maxHealth: 30 + Math.floor(gameState.time / 30) * 10
+            size: 12 + Math.random() * 8,
+            speed: 0.8 + Math.random() * 1.5,
+            health: 25 + Math.floor(gameState.time / 60) * 8,
+            maxHealth: 25 + Math.floor(gameState.time / 60) * 8
         }
 
         setGameState(prev => ({
@@ -194,8 +221,8 @@ export default function SurvivorGame() {
         if (now - weapon.lastFired < weapon.cooldown) return
 
         const projectiles: Projectile[] = []
-        
-        // 根据武器类型生成不同的投射物
+
+                // 根据武器类型生成不同的投射物
         switch (weapon.id) {
             case 'whip':
                 // 鞭子：近距离扇形攻击
@@ -233,12 +260,69 @@ export default function SurvivorGame() {
                     weaponId: weapon.id
                 })
                 break
+
+            case 'fireball':
+                // 火球术：大范围爆炸
+                for (let i = 0; i < 5; i++) {
+                    const angle = (i - 2) * 0.4
+                    projectiles.push({
+                        id: Date.now() + i,
+                        x: player.x,
+                        y: player.y,
+                        vx: Math.cos(angle) * 5,
+                        vy: Math.sin(angle) * 5,
+                        size: 10,
+                        damage: weapon.damage * weapon.level,
+                        weaponId: weapon.id
+                    })
+                }
+                break
+
+            case 'lightning':
+                // 闪电链：穿透攻击
+                const lightningTargetX = player.x + (Math.random() - 0.5) * 300
+                const lightningTargetY = player.y + (Math.random() - 0.5) * 300
+                const lightningDx = lightningTargetX - player.x
+                const lightningDy = lightningTargetY - player.y
+                const lightningDistance = Math.sqrt(lightningDx * lightningDx + lightningDy * lightningDy) || 1
+                
+                projectiles.push({
+                    id: Date.now(),
+                    x: player.x,
+                    y: player.y,
+                    vx: (lightningDx / lightningDistance) * 8,
+                    vy: (lightningDy / lightningDistance) * 8,
+                    size: 4,
+                    damage: weapon.damage * weapon.level,
+                    weaponId: weapon.id
+                })
+                break
+
+            case 'iceSpike':
+                // 冰锥：高伤害直线攻击
+                const iceTargetX = player.x + (Math.random() - 0.5) * 150
+                const iceTargetY = player.y + (Math.random() - 0.5) * 150
+                const iceDx = iceTargetX - player.x
+                const iceDy = iceTargetY - player.y
+                const iceDistance = Math.sqrt(iceDx * iceDx + iceDy * iceDy) || 1
+                
+                projectiles.push({
+                    id: Date.now(),
+                    x: player.x,
+                    y: player.y,
+                    vx: (iceDx / iceDistance) * 7,
+                    vy: (iceDy / iceDistance) * 7,
+                    size: 7,
+                    damage: weapon.damage * weapon.level,
+                    weaponId: weapon.id
+                })
+                break
         }
 
         setGameState(prev => ({
             ...prev,
             projectiles: [...prev.projectiles, ...projectiles],
-            weapons: prev.weapons.map(w => 
+            weapons: prev.weapons.map(w =>
                 w.id === weapon.id ? { ...w, lastFired: now } : w
             )
         }))
@@ -250,7 +334,7 @@ export default function SurvivorGame() {
 
         setGameState(prev => {
             const newState = { ...prev }
-            
+
             // 更新玩家位置
             if (keys.has('w') || keys.has('ArrowUp')) newState.player.y -= newState.player.speed
             if (keys.has('s') || keys.has('ArrowDown')) newState.player.y += newState.player.speed
@@ -267,7 +351,7 @@ export default function SurvivorGame() {
                 const dx = newState.player.x - enemy.x
                 const dy = newState.player.y - enemy.y
                 const distance = Math.sqrt(dx * dx + dy * dy)
-                
+
                 if (distance > 0) {
                     enemy.x += (dx / distance) * enemy.speed
                     enemy.y += (dy / distance) * enemy.speed
@@ -296,7 +380,7 @@ export default function SurvivorGame() {
                     const dx = projectile.x - enemy.x
                     const dy = projectile.y - enemy.y
                     const distance = Math.sqrt(dx * dx + dy * dy)
-                    
+
                     if (distance < enemy.size + projectile.size) {
                         enemy.health -= projectile.damage
                         hit = true
@@ -321,7 +405,7 @@ export default function SurvivorGame() {
                 const dx = newState.player.x - enemy.x
                 const dy = newState.player.y - enemy.y
                 const distance = Math.sqrt(dx * dx + dy * dy)
-                
+
                 if (distance < newState.player.size + enemy.size) {
                     newState.player.health -= 1
                 }
@@ -339,13 +423,13 @@ export default function SurvivorGame() {
                 fireWeapon(weapon, newState.player)
             })
 
-            // 生成敌人
-            if (Math.random() < 0.02 + newState.time / 1000) {
+            // 生成敌人（降低生成频率）
+            if (Math.random() < 0.01 + newState.time / 2000) {
                 spawnEnemy()
             }
 
-            // 升级武器（每30秒）
-            if (newState.time % 30 === 0 && newState.time > 0) {
+            // 升级武器（每45秒）
+            if (newState.time % 45 === 0 && newState.time > 0) {
                 newState.weapons = newState.weapons.map(weapon => {
                     if (weapon.level < weapon.maxLevel) {
                         return { ...weapon, level: weapon.level + 1 }
@@ -398,12 +482,12 @@ export default function SurvivorGame() {
         const healthBarWidth = 40
         const healthBarHeight = 4
         const healthPercentage = gameState.player.health / gameState.player.maxHealth
-        
+
         ctx.fillStyle = '#ff4444'
-        ctx.fillRect(gameState.player.x - healthBarWidth/2, gameState.player.y - gameState.player.size - 10, healthBarWidth, healthBarHeight)
-        
+        ctx.fillRect(gameState.player.x - healthBarWidth / 2, gameState.player.y - gameState.player.size - 10, healthBarWidth, healthBarHeight)
+
         ctx.fillStyle = '#44ff44'
-        ctx.fillRect(gameState.player.x - healthBarWidth/2, gameState.player.y - gameState.player.size - 10, healthBarWidth * healthPercentage, healthBarHeight)
+        ctx.fillRect(gameState.player.x - healthBarWidth / 2, gameState.player.y - gameState.player.size - 10, healthBarWidth * healthPercentage, healthBarHeight)
 
         // 绘制敌人
         gameState.enemies.forEach(enemy => {
@@ -420,7 +504,7 @@ export default function SurvivorGame() {
             ctx.fillRect(enemy.x - enemy.size, enemy.y - enemy.size - 8, enemy.size * 2 * enemyHealthPercentage, 3)
         })
 
-        // 绘制投射物
+                // 绘制投射物
         gameState.projectiles.forEach(projectile => {
             switch (projectile.weaponId) {
                 case 'whip':
@@ -428,6 +512,15 @@ export default function SurvivorGame() {
                     break
                 case 'magicWand':
                     ctx.fillStyle = '#00aaff'
+                    break
+                case 'fireball':
+                    ctx.fillStyle = '#ff4400'
+                    break
+                case 'lightning':
+                    ctx.fillStyle = '#ffff00'
+                    break
+                case 'iceSpike':
+                    ctx.fillStyle = '#00ffff'
                     break
                 default:
                     ctx.fillStyle = '#ffffff'
@@ -446,10 +539,10 @@ export default function SurvivorGame() {
         ctx.fillText(`生命: ${gameState.player.health}`, 10, 90)
 
         // 绘制武器信息
-        ctx.font = '14px Arial'
+        ctx.font = '12px Arial'
         gameState.weapons.forEach((weapon, index) => {
             ctx.fillStyle = '#ffffff'
-            ctx.fillText(`${weapon.name} Lv.${weapon.level}`, 10, 120 + index * 20)
+            ctx.fillText(`${weapon.name} Lv.${weapon.level}`, 10, 120 + index * 15)
         })
 
     }, [gameState])
@@ -491,48 +584,63 @@ export default function SurvivorGame() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 py-8">
-            <div className="max-w-4xl mx-auto">
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 py-8">
+            <div className="max-w-6xl mx-auto">
                 <div className="text-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800 mb-4">幸存者游戏</h1>
-                    <p className="text-gray-600 mb-4">
+                    <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        ⚔️ 幸存者游戏
+                    </h1>
+                    <p className="text-gray-300 mb-6 text-lg">
                         使用 WASD 或方向键移动，自动攻击敌人，生存越久分数越高！
                     </p>
+                    
+                    {/* 游戏状态显示 */}
+                    {gameState.gameStarted && !gameState.gameOver && (
+                        <div className="bg-black bg-opacity-50 rounded-lg p-4 mb-4 inline-block">
+                            <div className="text-white text-sm">
+                                <span className="mr-4">🎯 分数: {gameState.score}</span>
+                                <span className="mr-4">⏱️ 时间: {Math.floor(gameState.time / 60)}:{(gameState.time % 60).toString().padStart(2, '0')}</span>
+                                <span className="mr-4">❤️ 生命: {gameState.player.health}</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex justify-center mb-6">
-                    <div className="bg-white p-4 rounded-lg shadow-lg">
+                    <div className="bg-black bg-opacity-30 p-6 rounded-xl shadow-2xl border border-purple-500">
                         <canvas
                             ref={canvasRef}
                             width={800}
                             height={600}
-                            className="border border-gray-300 rounded"
+                            className="border border-purple-400 rounded-lg shadow-lg"
                         />
                     </div>
                 </div>
 
-                <div className="text-center">
+                                <div className="text-center">
                     {!gameState.gameStarted && !gameState.gameOver && (
                         <button
                             onClick={startGame}
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-semibold transition-colors"
+                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-12 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 shadow-lg"
                         >
-                            开始游戏
+                            🎮 开始游戏
                         </button>
                     )}
 
                     {gameState.gameOver && gameState.showGameOver && (
-                        <div className="bg-white p-6 rounded-lg shadow-lg max-w-md mx-auto">
-                            <h2 className="text-2xl font-bold text-gray-800 mb-4">游戏结束</h2>
-                            <p className="text-gray-600 mb-4">最终分数: {gameState.score}</p>
-                            <p className="text-gray-600 mb-4">生存时间: {Math.floor(gameState.time / 60)}:{(gameState.time % 60).toString().padStart(2, '0')}</p>
+                        <div className="bg-black bg-opacity-80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl max-w-md mx-auto border border-purple-500">
+                            <h2 className="text-3xl font-bold text-white mb-6">🏁 游戏结束</h2>
+                            <div className="space-y-3 mb-6">
+                                <p className="text-purple-300 text-lg">🎯 最终分数: <span className="text-yellow-400 font-bold">{gameState.score}</span></p>
+                                <p className="text-purple-300 text-lg">⏱️ 生存时间: <span className="text-cyan-400 font-bold">{Math.floor(gameState.time / 60)}:{(gameState.time % 60).toString().padStart(2, '0')}</span></p>
+                            </div>
                             
                             {!gameState.showSubmitForm ? (
                                 <button
                                     onClick={() => setGameState(prev => ({ ...prev, showSubmitForm: true }))}
-                                    className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg mr-2"
+                                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 mr-3"
                                 >
-                                    提交分数
+                                    📊 提交分数
                                 </button>
                             ) : (
                                 <div className="space-y-4">
@@ -541,18 +649,18 @@ export default function SurvivorGame() {
                                         value={gameState.playerName}
                                         onChange={(e) => setGameState(prev => ({ ...prev, playerName: e.target.value }))}
                                         placeholder="请输入你的名字"
-                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="w-full px-4 py-3 border border-purple-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-black bg-opacity-50 text-white placeholder-gray-400"
                                     />
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-3">
                                         <button
                                             onClick={submitScore}
-                                            className="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-lg"
+                                            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105"
                                         >
                                             提交
                                         </button>
                                         <button
                                             onClick={() => setGameState(prev => ({ ...prev, showSubmitForm: false }))}
-                                            className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-lg"
+                                            className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105"
                                         >
                                             取消
                                         </button>
@@ -562,32 +670,34 @@ export default function SurvivorGame() {
                             
                             <button
                                 onClick={startGame}
-                                className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg mt-4"
+                                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 mt-4"
                             >
-                                重新开始
+                                🔄 重新开始
                             </button>
                         </div>
                     )}
                 </div>
 
-                <div className="mt-8 bg-white p-6 rounded-lg shadow-lg">
-                    <h3 className="text-xl font-bold text-gray-800 mb-4">游戏说明</h3>
-                    <div className="grid md:grid-cols-2 gap-6">
+                <div className="mt-8 bg-black bg-opacity-50 backdrop-blur-sm p-8 rounded-2xl shadow-2xl border border-purple-500">
+                    <h3 className="text-2xl font-bold text-white mb-6">📖 游戏说明</h3>
+                    <div className="grid md:grid-cols-2 gap-8">
                         <div>
-                            <h4 className="font-semibold text-gray-700 mb-2">控制方式</h4>
-                            <ul className="text-gray-600 space-y-1">
-                                <li>• WASD 或方向键：移动角色</li>
-                                <li>• 自动攻击：武器会自动攻击附近的敌人</li>
-                                <li>• 躲避敌人：不要让敌人碰到你</li>
+                            <h4 className="font-semibold text-purple-300 mb-3 text-lg">🎮 控制方式</h4>
+                            <ul className="text-gray-300 space-y-2">
+                                <li>• <span className="text-yellow-400">WASD</span> 或 <span className="text-yellow-400">方向键</span>：移动角色</li>
+                                <li>• <span className="text-green-400">自动攻击</span>：武器会自动攻击附近的敌人</li>
+                                <li>• <span className="text-red-400">躲避敌人</span>：不要让敌人碰到你</li>
                             </ul>
                         </div>
                         <div>
-                            <h4 className="font-semibold text-gray-700 mb-2">武器系统</h4>
-                            <ul className="text-gray-600 space-y-1">
-                                <li>• 鞭子：近距离扇形攻击</li>
-                                <li>• 魔法杖：直线魔法弹</li>
-                                <li>• 每30秒武器自动升级</li>
-                                <li>• 生存时间越长，敌人越强</li>
+                            <h4 className="font-semibold text-purple-300 mb-3 text-lg">⚔️ 武器系统</h4>
+                            <ul className="text-gray-300 space-y-2">
+                                <li>• <span className="text-orange-400">鞭子</span>：近距离扇形攻击</li>
+                                <li>• <span className="text-blue-400">魔法杖</span>：直线魔法弹</li>
+                                <li>• <span className="text-red-400">火球术</span>：大范围爆炸攻击</li>
+                                <li>• <span className="text-yellow-400">闪电链</span>：穿透攻击</li>
+                                <li>• <span className="text-cyan-400">冰锥</span>：高伤害直线攻击</li>
+                                <li>• <span className="text-purple-400">每45秒武器自动升级</span></li>
                             </ul>
                         </div>
                     </div>
