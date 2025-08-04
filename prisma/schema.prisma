@@ -14,6 +14,7 @@ model Score {
   id        Int      @id @default(autoincrement())
   playerName String
   score     Int
+  gameType  String   @default("snake") // "snake" 或 "survivor"
   createdAt DateTime @default(now())
 }
 

@@ -44,11 +44,14 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        const { gameType = 'snake' } = body
+
         // 保存分数到数据库
         const newScore = await prisma.score.create({
             data: {
                 playerName: playerName.trim(),
-                score: score
+                score: score,
+                gameType: gameType
             }
         })
 

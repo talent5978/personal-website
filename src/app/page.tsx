@@ -40,15 +40,28 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 rounded-lg text-white">
-            <h3 className="text-2xl font-bold mb-4">🎮 小游戏</h3>
+            <h3 className="text-2xl font-bold mb-4">🐍 贪吃蛇</h3>
             <p className="mb-4">
               体验经典的贪吃蛇游戏，挑战你的反应速度和策略！
             </p>
             <a
               href="/game"
               className="inline-block bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            >
+              开始游戏
+            </a>
+          </div>
+
+          <div className="bg-gradient-to-r from-red-500 to-pink-600 p-6 rounded-lg text-white">
+            <h3 className="text-2xl font-bold mb-4">⚔️ 幸存者</h3>
+            <p className="mb-4">
+              在无尽的敌人中生存，升级武器，挑战极限！
+            </p>
+            <a
+              href="/survivor"
+              className="inline-block bg-white text-red-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
             >
               开始游戏
             </a>

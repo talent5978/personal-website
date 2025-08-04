@@ -23,7 +23,8 @@ export default function RootLayout({
                         <h1 className="text-xl font-bold">我的个人网站</h1>
                         <div className="space-x-4">
                             <Link href="/" className="hover:text-blue-200">首页</Link>
-                            <Link href="/game" className="hover:text-blue-200">小游戏</Link>
+                            <Link href="/game" className="hover:text-blue-200">贪吃蛇</Link>
+                            <Link href="/survivor" className="hover:text-blue-200">幸存者</Link>
                             <Link href="/leaderboard" className="hover:text-blue-200">排行榜</Link>
                             <Link href="/posts" className="hover:text-blue-200">社区论坛</Link>
                         </div>
