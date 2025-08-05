@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import Link from 'next/link'
@@ -11,7 +11,11 @@ export const metadata: Metadata = {
     description: '包含幸存者游戏、贪吃蛇游戏和排行榜的现代化个人网站，使用 Next.js + TypeScript 构建',
     keywords: '游戏开发, Next.js, TypeScript, 幸存者游戏, 贪吃蛇, 排行榜',
     authors: [{ name: '个人网站' }],
-    viewport: 'width=device-width, initial-scale=1',
+}
+
+export const viewport: Viewport = {
+    width: 'device-width',
+    initialScale: 1,
 }
 
 function Navigation() {

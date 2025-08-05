@@ -329,7 +329,7 @@ export default function SurvivorGame() {
     }, [particlePool])
 
     // 找到最近的敌人
-    const findNearestEnemy = useCallback((player: Player, enemies: Enemy[], maxDistance: number) => {
+    const findNearestEnemy = useCallback((player: Player, enemies: Enemy[], maxDistance: number): Enemy | null => {
         let nearestEnemy: Enemy | null = null
         let minDistance = maxDistance
 
@@ -385,7 +385,7 @@ export default function SurvivorGame() {
         if (now - weapon.lastFired < weapon.cooldown / speedFactor) return
 
         const projectiles: Projectile[] = []
-        const nearestEnemy = findNearestEnemy(player, enemies, weapon.range)
+        const nearestEnemy: Enemy | null = findNearestEnemy(player, enemies, weapon.range)
 
         switch (weapon.id) {
             case 'whip':
