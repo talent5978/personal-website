@@ -344,10 +344,10 @@ export default function SurvivorGame() {
             const newState = { ...prev }
 
             // 更新玩家位置
-            if (keys.has('w') || keys.has('ArrowUp')) newState.player.y -= newState.player.speed * speedFactor
-            if (keys.has('s') || keys.has('ArrowDown')) newState.player.y += newState.player.speed * speedFactor
-            if (keys.has('a') || keys.has('ArrowLeft')) newState.player.x -= newState.player.speed * speedFactor
-            if (keys.has('d') || keys.has('ArrowRight')) newState.player.x += newState.player.speed * speedFactor
+            if (keys.has('w') || keys.has('ArrowUp')) newState.player.y -= newState.player.speed
+            if (keys.has('s') || keys.has('ArrowDown')) newState.player.y += newState.player.speed
+            if (keys.has('a') || keys.has('ArrowLeft')) newState.player.x -= newState.player.speed
+            if (keys.has('d') || keys.has('ArrowRight')) newState.player.x += newState.player.speed
 
             // 边界检查
             newState.player.x = Math.max(newState.player.size, Math.min(800 - newState.player.size, newState.player.x))
@@ -598,20 +598,6 @@ export default function SurvivorGame() {
                     <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                         ⚔️ 幸存者游戏
                     </h1>
-                    
-                    {/* 速度调节器 */}
-                    <div className="mb-4 flex justify-center items-center gap-4">
-                        <label className="text-white text-lg font-bold">游戏速度：</label>
-                        <select
-                            value={speedFactor}
-                            onChange={e => setSpeedFactor(Number(e.target.value))}
-                            className="px-4 py-2 rounded-lg bg-black bg-opacity-60 text-white border border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                        >
-                            {SPEED_PRESETS.map(preset => (
-                                <option key={preset.value} value={preset.value}>{preset.label}</option>
-                            ))}
-                        </select>
-                    </div>
                     
                     <p className="text-gray-300 mb-6 text-lg">
                         使用 WASD 或方向键移动，自动攻击敌人，生存越久分数越高！

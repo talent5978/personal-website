@@ -70,8 +70,11 @@ export default function Game() {
 
     // 生成特殊食物
     const generateSpecialFood = useCallback(() => {
-        if (Math.random() < 0.25) { // 增加到25% 概率生成特殊食物
-            const excludePositions = [...gameState.snake, ...gameState.obstacles, gameState.food]
+        if (Math.random() < 0.4) { // 增加到40% 概率生成特殊食物
+            const excludePositions = [...gameState.snake, ...gameState.obstacles]
+            if (gameState.food) {
+                excludePositions.push(gameState.food)
+            }
             const specialFood = generateRandomPosition(excludePositions)
             const types: ('speed' | 'double' | 'shield')[] = ['speed', 'double', 'shield']
             const specialFoodType = types[Math.floor(Math.random() * types.length)]
@@ -82,7 +85,7 @@ export default function Game() {
                 specialFoodType
             }))
         }
-    }, [gameState.snake, gameState.obstacles, gameState.food, generateRandomPosition])
+    }, [gameState.snake, gameState.obstacles, generateRandomPosition])
 
     // 生成障碍物（障碍模式）
     const generateObstacles = useCallback(() => {
@@ -328,7 +331,7 @@ export default function Game() {
         // 游戏开始时立即生成一个特殊食物
         setTimeout(() => {
             generateSpecialFood()
-        }, 1000) // 1秒后生成第一个特殊食物
+        }, 500) // 0.5秒后生成第一个特殊食物
     }
 
     // 切换游戏模式
@@ -357,8 +360,8 @@ export default function Game() {
                                 <button
                                     onClick={() => changeGameMode('classic')}
                                     className={`px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${gameState.gameMode === 'classic'
-                                            ? 'bg-green-600 text-white shadow-lg'
-                                            : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                                        ? 'bg-green-600 text-white shadow-lg'
+                                        : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
                                         }`}
                                 >
                                     🎮 经典模式
@@ -366,8 +369,8 @@ export default function Game() {
                                 <button
                                     onClick={() => changeGameMode('obstacle')}
                                     className={`px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${gameState.gameMode === 'obstacle'
-                                            ? 'bg-red-600 text-white shadow-lg'
-                                            : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                                        ? 'bg-red-600 text-white shadow-lg'
+                                        : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
                                         }`}
                                 >
                                     ⚠️ 障碍模式
@@ -375,8 +378,8 @@ export default function Game() {
                                 <button
                                     onClick={() => changeGameMode('speed')}
                                     className={`px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${gameState.gameMode === 'speed'
-                                            ? 'bg-blue-600 text-white shadow-lg'
-                                            : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
+                                        ? 'bg-blue-600 text-white shadow-lg'
+                                        : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
                                         }`}
                                 >
                                     ⚡ 极速模式
@@ -415,8 +418,8 @@ export default function Game() {
                             <div
                                 key={index}
                                 className={`absolute rounded-sm ${index === 0
-                                        ? 'bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg'
-                                        : 'bg-gradient-to-r from-green-500 to-green-600'
+                                    ? 'bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg'
+                                    : 'bg-gradient-to-r from-green-500 to-green-600'
                                     }`}
                                 style={{
                                     left: segment.x * cellSize,
@@ -442,8 +445,8 @@ export default function Game() {
                         {gameState.specialFood && (
                             <div
                                 className={`absolute rounded-full shadow-lg animate-bounce ${gameState.specialFoodType === 'speed' ? 'bg-gradient-to-r from-blue-400 to-cyan-500' :
-                                        gameState.specialFoodType === 'double' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                                            'bg-gradient-to-r from-purple-400 to-pink-500'
+                                    gameState.specialFoodType === 'double' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
+                                        'bg-gradient-to-r from-purple-400 to-pink-500'
                                     }`}
                                 style={{
                                     left: gameState.specialFood.x * cellSize,
