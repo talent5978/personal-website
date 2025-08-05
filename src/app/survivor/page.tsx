@@ -11,6 +11,7 @@ const GAME_CONFIG = {
   ENEMY_BASE_SPEED: 1.5,
   EXPERIENCE_RANGE: 50,
   LEVEL_UP_EXPERIENCE_BASE: 100,
+  INVULNERABLE_TIME: 1000, // 无敌时间：1秒
   WEAPON_COOLDOWNS: {
     magic_missile: 800,
     fireball: 1200,
@@ -30,6 +31,7 @@ interface Player {
   health: number
   maxHealth: number
   speed: number
+  invulnerableUntil: number // 无敌时间截止时间戳
 }
 
 interface Enemy {
@@ -76,6 +78,15 @@ interface ExperienceGem {
   collected: boolean
 }
 
+interface DamageText {
+  id: number
+  x: number
+  y: number
+  damage: number
+  opacity: number
+  createdAt: number
+}
+
 export default function VampireSurvivorGame() {
   const { t } = useLanguage()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -97,12 +108,14 @@ export default function VampireSurvivorGame() {
     experienceToNext: GAME_CONFIG.LEVEL_UP_EXPERIENCE_BASE,
     health: 100,
     maxHealth: 100,
-    speed: GAME_CONFIG.PLAYER_SPEED
+    speed: GAME_CONFIG.PLAYER_SPEED,
+    invulnerableUntil: 0
   })
   
   const [enemies, setEnemies] = useState<Enemy[]>([])
   const [projectiles, setProjectiles] = useState<Projectile[]>([])
   const [experienceGems, setExperienceGems] = useState<ExperienceGem[]>([])
+  const [damageTexts, setDamageTexts] = useState<DamageText[]>([])
   const [weapons, setWeapons] = useState<Weapon[]>([
     {
       id: 'magic_missile',
@@ -309,10 +322,25 @@ export default function VampireSurvivorGame() {
     setPlayer(prev => ({ ...prev, x: newPlayerX, y: newPlayerY }))
     
     // 绘制玩家
-    ctx.fillStyle = '#3b82f6'
-    ctx.beginPath()
-    ctx.arc(newPlayerX, newPlayerY, 20, 0, Math.PI * 2)
-    ctx.fill()
+    const currentTime = Date.now()
+    const isInvulnerable = currentTime < player.invulnerableUntil
+    
+    // 无敌时闪烁效果
+    if (!isInvulnerable || Math.floor(currentTime / 100) % 2 === 0) {
+      ctx.fillStyle = isInvulnerable ? '#60a5fa' : '#3b82f6' // 无敌时颜色稍浅
+      ctx.beginPath()
+      ctx.arc(newPlayerX, newPlayerY, 20, 0, Math.PI * 2)
+      ctx.fill()
+      
+      // 无敌时添加光环效果
+      if (isInvulnerable) {
+        ctx.strokeStyle = '#93c5fd'
+        ctx.lineWidth = 3
+        ctx.beginPath()
+        ctx.arc(newPlayerX, newPlayerY, 25, 0, Math.PI * 2)
+        ctx.stroke()
+      }
+    }
     
     // 玩家血条
     ctx.fillStyle = '#ef4444'
@@ -471,24 +499,59 @@ export default function VampireSurvivorGame() {
     }).filter(gem => !gem.collected))
     
     // 碰撞检测：玩家与敌人
-    enemies.forEach(enemy => {
-      const distance = Math.sqrt(
-        Math.pow(enemy.x - newPlayerX, 2) + Math.pow(enemy.y - newPlayerY, 2)
-      )
+    if (currentTime >= player.invulnerableUntil) { // 只有非无敌状态才能受伤
+      enemies.forEach(enemy => {
+        const distance = Math.sqrt(
+          Math.pow(enemy.x - newPlayerX, 2) + Math.pow(enemy.y - newPlayerY, 2)
+        )
+        
+        if (distance < 35) {
+          setPlayer(prev => {
+            const newHealth = prev.health - enemy.damage
+            if (newHealth <= 0) {
+              setGameState('gameOver')
+              return { ...prev, health: 0 }
+            }
+                         // 显示伤害数字
+             setDamageTexts(prevTexts => [...prevTexts, {
+               id: Date.now() + Math.random(),
+               x: newPlayerX + (Math.random() - 0.5) * 40,
+               y: newPlayerY - 20,
+               damage: enemy.damage,
+               opacity: 1,
+               createdAt: currentTime
+             }])
+             
+             // 受伤后获得无敌时间
+             return { 
+               ...prev, 
+               health: newHealth,
+               invulnerableUntil: currentTime + GAME_CONFIG.INVULNERABLE_TIME
+             }
+          })
+        }
+      })
+    }
+    
+    // 更新和绘制伤害数字
+    setDamageTexts(prev => prev.map(text => {
+      const age = currentTime - text.createdAt
+      const newY = text.y - age * 0.05 // 向上漂浮
+      const newOpacity = Math.max(0, 1 - age / 1500) // 1.5秒后消失
       
-      if (distance < 35) {
-        setPlayer(prev => {
-          const newHealth = prev.health - enemy.damage
-          if (newHealth <= 0) {
-            setGameState('gameOver')
-          }
-          return { ...prev, health: Math.max(0, newHealth) }
-        })
+      // 绘制伤害数字
+      if (newOpacity > 0) {
+        ctx.fillStyle = `rgba(255, 100, 100, ${newOpacity})`
+        ctx.font = 'bold 16px Arial'
+        ctx.textAlign = 'center'
+        ctx.fillText(`-${text.damage}`, text.x, newY)
       }
-    })
+      
+      return { ...text, y: newY, opacity: newOpacity }
+    }).filter(text => text.opacity > 0))
     
     gameLoopRef.current = requestAnimationFrame(gameLoop)
-  }, [gameState, player, enemies, projectiles, experienceGems, fireWeapons])
+  }, [gameState, player, enemies, projectiles, experienceGems, damageTexts, fireWeapons])
 
   // 生成升级选项
   const generateLevelUpOptions = useCallback(() => {
@@ -578,11 +641,13 @@ export default function VampireSurvivorGame() {
       experienceToNext: GAME_CONFIG.LEVEL_UP_EXPERIENCE_BASE,
       health: 100,
       maxHealth: 100,
-      speed: GAME_CONFIG.PLAYER_SPEED
+      speed: GAME_CONFIG.PLAYER_SPEED,
+      invulnerableUntil: 0
     })
     setEnemies([])
     setProjectiles([])
     setExperienceGems([])
+    setDamageTexts([])
     setWeapons([{
       id: 'magic_missile',
       name: '魔法导弹',
