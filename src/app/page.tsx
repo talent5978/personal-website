@@ -1,96 +1,104 @@
-import Image from "next/image";
+'use client'
+
+import Link from 'next/link'
+import { useLanguage } from '@/components/LanguageProvider'
 
 export default function Home() {
+  const { t } = useLanguage()
+
   return (
-    <div className="min-h-screen">
-      <div className="max-w-4xl mx-auto">
-        <div className="text-center py-12">
-          <h1 className="text-4xl font-bold text-gray-800 mb-4">
-            欢迎来到我的个人网站
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 py-8">
+      <div className="max-w-6xl mx-auto px-4">
+        <div className="text-center mb-12">
+          <h1 className="text-5xl font-bold text-white mb-6 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            {t.home.title}
           </h1>
-          <p className="text-xl text-gray-600 mb-8">
-            这里是一个包含小游戏和排行榜的全栈项目
+          <p className="text-gray-300 mb-8 text-xl max-w-3xl mx-auto">
+            {t.home.description}
           </p>
-        </div>
-
-        <div className="grid md:grid-cols-2 gap-8 mb-12">
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold text-blue-600 mb-4">关于我</h2>
-            <p className="text-gray-700 mb-4">
-              我是一名全栈开发者，热爱编程和技术。
-            </p>
-            <p className="text-gray-700 mb-4">
-              这个网站使用 Next.js + TypeScript + Tailwind CSS 构建，
-              后端使用 PostgreSQL 云数据库存储游戏分数。
-            </p>
-            <p className="text-gray-700">
-              欢迎体验我的小游戏，挑战排行榜！
-            </p>
-          </div>
-
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-2xl font-bold text-green-600 mb-4">技术栈</h2>
-            <ul className="text-gray-700 space-y-2">
-              <li>• 前端：Next.js + React + TypeScript</li>
-              <li>• 样式：Tailwind CSS</li>
-              <li>• 后端：Next.js API Routes</li>
-              <li>• 数据库：PostgreSQL + Prisma ORM</li>
-              <li>• 部署：Vercel</li>
-            </ul>
-          </div>
+          <p className="text-gray-700 mb-4">
+            {t.home.techStack}
+          </p>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-6 rounded-lg text-white">
-            <h3 className="text-2xl font-bold mb-4">🐍 贪吃蛇</h3>
-            <p className="mb-4">
-              体验经典的贪吃蛇游戏，挑战你的反应速度和策略！
-            </p>
-            <a
-              href="/game"
-              className="inline-block bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            <h3 className="text-2xl font-bold mb-4">{t.home.features.snake.title}</h3>
+            <p className="text-blue-100 mb-4">{t.home.features.snake.description}</p>
+            <Link 
+              href="/game" 
+              className="inline-block bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105"
             >
-              开始游戏
-            </a>
+              🎮 开始游戏
+            </Link>
           </div>
 
           <div className="bg-gradient-to-r from-red-500 to-pink-600 p-6 rounded-lg text-white">
-            <h3 className="text-2xl font-bold mb-4">⚔️ 幸存者</h3>
-            <p className="mb-4">
-              在无尽的敌人中生存，升级武器，挑战极限！
-            </p>
-            <a
-              href="/survivor"
-              className="inline-block bg-white text-red-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            <h3 className="text-2xl font-bold mb-4">{t.home.features.survivor.title}</h3>
+            <p className="text-red-100 mb-4">{t.home.features.survivor.description}</p>
+            <Link 
+              href="/survivor" 
+              className="inline-block bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105"
             >
-              开始游戏
-            </a>
+              ⚔️ 开始游戏
+            </Link>
           </div>
 
           <div className="bg-gradient-to-r from-green-500 to-teal-600 p-6 rounded-lg text-white">
-            <h3 className="text-2xl font-bold mb-4">🏆 排行榜</h3>
-            <p className="mb-4">
-              查看所有玩家的最高分数，看看你能排第几名！
-            </p>
-            <a
-              href="/leaderboard"
-              className="inline-block bg-white text-green-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            <h3 className="text-2xl font-bold mb-4">{t.home.features.leaderboard.title}</h3>
+            <p className="text-green-100 mb-4">{t.home.features.leaderboard.description}</p>
+            <Link 
+              href="/leaderboard" 
+              className="inline-block bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105"
             >
-              查看排行榜
-            </a>
+              🏆 查看排行榜
+            </Link>
           </div>
 
           <div className="bg-gradient-to-r from-orange-500 to-red-600 p-6 rounded-lg text-white">
-            <h3 className="text-2xl font-bold mb-4">💬 社区论坛</h3>
-            <p className="mb-4">
-              分享你的想法，与大家交流讨论，发表帖子和留言！
-            </p>
-            <a
-              href="/posts"
-              className="inline-block bg-white text-orange-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition-colors"
+            <h3 className="text-2xl font-bold mb-4">{t.home.features.forum.title}</h3>
+            <p className="text-orange-100 mb-4">{t.home.features.forum.description}</p>
+            <Link 
+              href="/posts" 
+              className="inline-block bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105"
             >
-              进入论坛
-            </a>
+              💬 进入论坛
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-12 text-center">
+          <div className="bg-black bg-opacity-30 backdrop-blur-sm p-8 rounded-2xl shadow-2xl border border-blue-500">
+            <h2 className="text-3xl font-bold text-white mb-6">🚀 技术栈</h2>
+            <div className="grid md:grid-cols-3 gap-6 text-white">
+              <div className="text-center">
+                <h3 className="text-xl font-semibold mb-3 text-blue-300">前端</h3>
+                <ul className="space-y-2 text-gray-300">
+                  <li>Next.js 14</li>
+                  <li>React 18</li>
+                  <li>TypeScript</li>
+                  <li>Tailwind CSS</li>
+                </ul>
+              </div>
+              <div className="text-center">
+                <h3 className="text-xl font-semibold mb-3 text-green-300">后端</h3>
+                <ul className="space-y-2 text-gray-300">
+                  <li>Next.js API Routes</li>
+                  <li>Prisma ORM</li>
+                  <li>PostgreSQL</li>
+                  <li>RESTful API</li>
+                </ul>
+              </div>
+              <div className="text-center">
+                <h3 className="text-xl font-semibold mb-3 text-purple-300">部署</h3>
+                <ul className="space-y-2 text-gray-300">
+                  <li>Vercel</li>
+                  <li>GitHub</li>
+                  <li>Neon Database</li>
+                  <li>CI/CD</li>
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
       </div>

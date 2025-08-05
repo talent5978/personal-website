@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { useLanguage } from '@/components/LanguageProvider'
 
 interface Position {
     x: number
@@ -26,7 +27,8 @@ interface GameState {
     gameMode: 'classic' | 'obstacle' | 'speed'
 }
 
-export default function Game() {
+export default function SnakeGame() {
+    const { t } = useLanguage()
     const [gameState, setGameState] = useState<GameState>({
         snake: [{ x: 10, y: 10 }],
         food: { x: 15, y: 15 },
@@ -48,6 +50,7 @@ export default function Game() {
 
     const gridSize = 20
     const cellSize = 20
+    const canvasRef = useRef<HTMLCanvasElement>(null)
 
     // 生成随机位置（避免与蛇身和障碍物重叠）
     const generateRandomPosition = useCallback((excludePositions: Position[] = []) => {
@@ -345,237 +348,208 @@ export default function Game() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-green-900 via-emerald-900 to-green-900 py-8">
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-gray-900 py-8">
             <div className="max-w-6xl mx-auto">
                 <div className="text-center mb-8">
-                    <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
-                        🐍 贪吃蛇游戏
+                    <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
+                        {t.snake.title}
                     </h1>
-
-                    {/* 游戏模式选择 */}
-                    {!gameState.gameStarted && !gameState.gameOver && (
-                        <div className="mb-6">
-                            <h3 className="text-white text-lg mb-4">选择游戏模式</h3>
-                            <div className="flex justify-center space-x-4">
-                                <button
-                                    onClick={() => changeGameMode('classic')}
-                                    className={`px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${gameState.gameMode === 'classic'
-                                        ? 'bg-green-600 text-white shadow-lg'
-                                        : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                                        }`}
-                                >
-                                    🎮 经典模式
-                                </button>
-                                <button
-                                    onClick={() => changeGameMode('obstacle')}
-                                    className={`px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${gameState.gameMode === 'obstacle'
-                                        ? 'bg-red-600 text-white shadow-lg'
-                                        : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                                        }`}
-                                >
-                                    ⚠️ 障碍模式
-                                </button>
-                                <button
-                                    onClick={() => changeGameMode('speed')}
-                                    className={`px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${gameState.gameMode === 'speed'
-                                        ? 'bg-blue-600 text-white shadow-lg'
-                                        : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                                        }`}
-                                >
-                                    ⚡ 极速模式
-                                </button>
-                            </div>
-                        </div>
-                    )}
+                    <p className="text-gray-300 mb-6 text-lg">
+                        {t.snake.description}
+                    </p>
 
                     {/* 游戏状态显示 */}
                     {gameState.gameStarted && !gameState.gameOver && (
                         <div className="bg-black bg-opacity-50 rounded-lg p-4 mb-4 inline-block">
-                            <div className="text-white text-sm space-x-6">
-                                <span>🎯 分数: <span className="text-yellow-400 font-bold">{gameState.score}</span></span>
-                                <span>📏 长度: <span className="text-green-400 font-bold">{gameState.snake.length}</span></span>
-                                <span>🏆 等级: <span className="text-blue-400 font-bold">{gameState.level}</span></span>
-                                <span>⚡ 速度: <span className="text-purple-400 font-bold">{Math.round(1000 / gameState.speed)}</span></span>
-                                {gameState.powerUpActive && (
-                                    <span className="text-orange-400 font-bold">
-                                        {gameState.specialFoodType === 'speed' && '🚀 加速'}
-                                        {gameState.specialFoodType === 'double' && '💰 双倍'}
-                                        {gameState.specialFoodType === 'shield' && '🛡️ 护盾'}
-                                    </span>
-                                )}
+                            <div className="text-white text-sm">
+                                <span className="mr-4">🎯 {t.snake.stats.score}: {gameState.score}</span>
+                                <span className="mr-4">📏 {t.snake.stats.length}: {gameState.snake.length}</span>
+                                <span className="mr-4">📈 {t.snake.stats.level}: {gameState.level}</span>
+                                <span className="mr-4">⚡ {t.snake.stats.speed}: {gameState.speed}</span>
                             </div>
                         </div>
                     )}
                 </div>
 
-                <div className="flex justify-center mb-8">
-                    <div
-                        className="bg-black bg-opacity-30 border-2 border-green-500 relative rounded-lg shadow-2xl"
-                        style={{ width: gridSize * cellSize, height: gridSize * cellSize }}
-                    >
-                        {/* 蛇身 */}
-                        {gameState.snake.map((segment, index) => (
-                            <div
-                                key={index}
-                                className={`absolute rounded-sm ${index === 0
-                                    ? 'bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg'
-                                    : 'bg-gradient-to-r from-green-500 to-green-600'
-                                    }`}
-                                style={{
-                                    left: segment.x * cellSize,
-                                    top: segment.y * cellSize,
-                                    width: cellSize,
-                                    height: cellSize,
-                                }}
-                            />
-                        ))}
-
-                        {/* 食物 */}
-                        <div
-                            className="absolute bg-gradient-to-r from-red-400 to-pink-500 rounded-full shadow-lg animate-pulse"
-                            style={{
-                                left: gameState.food.x * cellSize,
-                                top: gameState.food.y * cellSize,
-                                width: cellSize,
-                                height: cellSize,
-                            }}
+                <div className="flex justify-center mb-6">
+                    <div className="bg-black bg-opacity-30 p-6 rounded-xl shadow-2xl border border-green-500">
+                        <canvas
+                            ref={canvasRef}
+                            width={600}
+                            height={400}
+                            className="border border-green-400 rounded-lg shadow-lg"
                         />
-
-                        {/* 特殊食物 */}
-                        {gameState.specialFood && (
-                            <div
-                                className={`absolute rounded-full shadow-lg animate-bounce ${gameState.specialFoodType === 'speed' ? 'bg-gradient-to-r from-blue-400 to-cyan-500' :
-                                    gameState.specialFoodType === 'double' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                                        'bg-gradient-to-r from-purple-400 to-pink-500'
-                                    }`}
-                                style={{
-                                    left: gameState.specialFood.x * cellSize,
-                                    top: gameState.specialFood.y * cellSize,
-                                    width: cellSize,
-                                    height: cellSize,
-                                }}
-                            />
-                        )}
-
-                        {/* 障碍物 */}
-                        {gameState.obstacles.map((obstacle, index) => (
-                            <div
-                                key={index}
-                                className="absolute bg-gradient-to-r from-gray-600 to-gray-800 rounded-sm shadow-lg"
-                                style={{
-                                    left: obstacle.x * cellSize,
-                                    top: obstacle.y * cellSize,
-                                    width: cellSize,
-                                    height: cellSize,
-                                }}
-                            />
-                        ))}
                     </div>
-                </div>
-                {/* 移动端方向按钮 */}
-                <div className="flex flex-col items-center mt-4 space-y-2 sm:hidden">
-                    <button
-                        className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full text-2xl active:from-green-600 active:to-emerald-700 shadow-lg transform active:scale-95"
-                        onClick={() => handleDirection('UP')}
-                    >↑</button>
-                    <div className="flex space-x-8">
-                        <button
-                            className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full text-2xl active:from-green-600 active:to-emerald-700 shadow-lg transform active:scale-95"
-                            onClick={() => handleDirection('LEFT')}
-                        >←</button>
-                        <button
-                            className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full text-2xl active:from-green-600 active:to-emerald-700 shadow-lg transform active:scale-95"
-                            onClick={() => handleDirection('RIGHT')}
-                        >→</button>
-                    </div>
-                    <button
-                        className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full text-2xl active:from-green-600 active:to-emerald-700 shadow-lg transform active:scale-95"
-                        onClick={() => handleDirection('DOWN')}
-                    >↓</button>
                 </div>
 
                 <div className="text-center">
                     {!gameState.gameStarted && !gameState.gameOver && (
-                        <button
-                            onClick={startGame}
-                            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-12 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 shadow-lg"
-                        >
-                            🎮 开始游戏
-                        </button>
-                    )}
-
-                    {gameState.gameOver && (
-                        <div className="bg-black bg-opacity-80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl max-w-md mx-auto border border-green-500">
-                            <h2 className="text-3xl font-bold text-white mb-6">🏁 游戏结束</h2>
-                            <div className="space-y-3 mb-6">
-                                <p className="text-green-300 text-lg">🎯 最终分数: <span className="text-yellow-400 font-bold">{gameState.score}</span></p>
-                                <p className="text-green-300 text-lg">📏 蛇的长度: <span className="text-green-400 font-bold">{gameState.snake.length}</span></p>
-                                <p className="text-green-300 text-lg">🏆 达到等级: <span className="text-blue-400 font-bold">{gameState.level}</span></p>
-                            </div>
-
+                        <div className="space-y-4">
                             <button
-                                onClick={resetGame}
-                                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105"
+                                onClick={startGame}
+                                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-12 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 shadow-lg"
                             >
-                                🔄 重新开始
+                                🎮 {t.snake.gameOver.restart}
                             </button>
+                            
+                            {/* 游戏模式选择 */}
+                            <div className="flex justify-center space-x-4 mt-4">
+                                <button
+                                    onClick={() => changeGameMode('classic')}
+                                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                                        gameState.gameMode === 'classic'
+                                            ? 'bg-green-600 text-white'
+                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    }`}
+                                >
+                                    {t.snake.gameModes.classic}
+                                </button>
+                                <button
+                                    onClick={() => changeGameMode('obstacle')}
+                                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                                        gameState.gameMode === 'obstacle'
+                                            ? 'bg-green-600 text-white'
+                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    }`}
+                                >
+                                    {t.snake.gameModes.obstacle}
+                                </button>
+                                <button
+                                    onClick={() => changeGameMode('speed')}
+                                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                                        gameState.gameMode === 'speed'
+                                            ? 'bg-green-600 text-white'
+                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                    }`}
+                                >
+                                    {t.snake.gameModes.speed}
+                                </button>
+                            </div>
                         </div>
                     )}
 
-                    {gameState.showSubmitForm && (
-                        <div className="mt-4 p-6 bg-black bg-opacity-80 backdrop-blur-sm rounded-2xl shadow-2xl max-w-md mx-auto border border-green-500">
-                            <h3 className="text-xl font-bold text-white mb-4">📊 提交你的分数</h3>
+                    {gameState.gameOver && gameState.showSubmitForm && (
+                        <div className="bg-black bg-opacity-80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl max-w-md mx-auto border border-green-500">
+                            <h2 className="text-3xl font-bold text-white mb-6">{t.snake.gameOver.title}</h2>
+                            <div className="space-y-3 mb-6">
+                                <p className="text-green-300 text-lg">{t.snake.gameOver.finalScore}: <span className="text-yellow-400 font-bold">{gameState.score}</span></p>
+                                <p className="text-green-300 text-lg">{t.snake.stats.length}: <span className="text-cyan-400 font-bold">{gameState.snake.length}</span></p>
+                            </div>
+
                             <input
                                 type="text"
-                                placeholder="输入你的名字"
                                 value={gameState.playerName}
                                 onChange={(e) => setGameState(prev => ({ ...prev, playerName: e.target.value }))}
-                                className="w-full px-4 py-3 border border-green-400 rounded-lg mb-4 focus:outline-none focus:ring-2 focus:ring-green-500 bg-black bg-opacity-50 text-white placeholder-gray-400"
+                                placeholder={t.snake.gameOver.enterName}
+                                className="w-full px-4 py-3 border border-green-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-black bg-opacity-50 text-white placeholder-gray-400"
                             />
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={submitScore}
+                                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105"
+                                >
+                                    {t.common.submit}
+                                </button>
+                                <button
+                                    onClick={() => setGameState(prev => ({ ...prev, showSubmitForm: false }))}
+                                    className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105"
+                                >
+                                    {t.common.cancel}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {gameState.gameOver && !gameState.showSubmitForm && (
+                        <div className="bg-black bg-opacity-80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl max-w-md mx-auto border border-green-500">
+                            <h2 className="text-3xl font-bold text-white mb-6">{t.snake.gameOver.title}</h2>
+                            <div className="space-y-3 mb-6">
+                                <p className="text-green-300 text-lg">{t.snake.gameOver.finalScore}: <span className="text-yellow-400 font-bold">{gameState.score}</span></p>
+                                <p className="text-green-300 text-lg">{t.snake.stats.length}: <span className="text-cyan-400 font-bold">{gameState.snake.length}</span></p>
+                            </div>
+
                             <button
-                                onClick={submitScore}
-                                disabled={!gameState.playerName.trim()}
-                                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                                onClick={() => setGameState(prev => ({ ...prev, showSubmitForm: true }))}
+                                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 mr-3"
                             >
-                                提交分数
+                                📊 {t.snake.gameOver.submitScore}
+                            </button>
+                            <button
+                                onClick={startGame}
+                                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 mt-4"
+                            >
+                                🔄 {t.snake.gameOver.restart}
                             </button>
                         </div>
                     )}
                 </div>
 
+                {/* 移动端控制按钮 */}
+                <div className="md:hidden mt-6">
+                    <div className="grid grid-cols-3 gap-4 max-w-xs mx-auto">
+                        <div></div>
+                        <button
+                            onClick={() => handleDirection('UP')}
+                            className="bg-green-600 text-white p-4 rounded-lg text-xl font-bold hover:bg-green-700 transition-colors"
+                        >
+                            ↑
+                        </button>
+                        <div></div>
+                        <button
+                            onClick={() => handleDirection('LEFT')}
+                            className="bg-green-600 text-white p-4 rounded-lg text-xl font-bold hover:bg-green-700 transition-colors"
+                        >
+                            ←
+                        </button>
+                        <button
+                            onClick={() => handleDirection('DOWN')}
+                            className="bg-green-600 text-white p-4 rounded-lg text-xl font-bold hover:bg-green-700 transition-colors"
+                        >
+                            ↓
+                        </button>
+                        <button
+                            onClick={() => handleDirection('RIGHT')}
+                            className="bg-green-600 text-white p-4 rounded-lg text-xl font-bold hover:bg-green-700 transition-colors"
+                        >
+                            →
+                        </button>
+                    </div>
+                </div>
+
                 <div className="mt-8 bg-black bg-opacity-50 backdrop-blur-sm p-8 rounded-2xl shadow-2xl border border-green-500">
-                    <h3 className="text-2xl font-bold text-white mb-6">📖 游戏说明</h3>
+                    <h3 className="text-2xl font-bold text-white mb-6">{t.snake.instructions.title}</h3>
                     <div className="grid md:grid-cols-2 gap-8">
                         <div>
-                            <h4 className="font-semibold text-green-300 mb-3 text-lg">🎮 控制方式</h4>
+                            <h4 className="font-semibold text-green-300 mb-3 text-lg">{t.snake.instructions.controls}</h4>
                             <ul className="text-gray-300 space-y-2">
-                                <li>• <span className="text-yellow-400">方向键</span> 或 <span className="text-yellow-400">移动端按钮</span>：控制蛇的移动</li>
-                                <li>• <span className="text-green-400">吃到食物</span>：增加分数和蛇的长度</li>
-                                <li>• <span className="text-red-400">避免碰撞</span>：不要撞到墙壁、障碍物或自己的身体</li>
+                                <li>• <span className="text-yellow-400">WASD</span> 或 <span className="text-yellow-400">方向键</span>：{t.snake.controls}</li>
+                                <li>• <span className="text-green-400">空格键</span>：暂停游戏</li>
+                                <li>• <span className="text-red-400">避免撞墙</span>：不要撞到墙壁或自己的身体</li>
                             </ul>
                         </div>
                         <div>
-                            <h4 className="font-semibold text-green-300 mb-3 text-lg">🎯 游戏模式</h4>
+                            <h4 className="font-semibold text-green-300 mb-3 text-lg">{t.snake.instructions.modes}</h4>
                             <ul className="text-gray-300 space-y-2">
-                                <li>• <span className="text-green-400">经典模式</span>：传统贪吃蛇玩法</li>
-                                <li>• <span className="text-red-400">障碍模式</span>：地图中有固定障碍物</li>
-                                <li>• <span className="text-blue-400">极速模式</span>：更快的移动速度</li>
+                                <li>• <span className="text-blue-400">{t.snake.gameModes.classic}</span>：经典模式，无特殊规则</li>
+                                <li>• <span className="text-red-400">{t.snake.gameModes.obstacle}</span>：障碍模式，有固定障碍物</li>
+                                <li>• <span className="text-purple-400">{t.snake.gameModes.speed}</span>：极速模式，速度会逐渐增加</li>
                             </ul>
                         </div>
                         <div>
-                            <h4 className="font-semibold text-green-300 mb-3 text-lg">⚡ 特殊食物</h4>
+                            <h4 className="font-semibold text-green-300 mb-3 text-lg">{t.snake.instructions.specialFood}</h4>
                             <ul className="text-gray-300 space-y-2">
-                                <li>• <span className="text-blue-400">蓝色食物</span>：临时加速效果</li>
-                                <li>• <span className="text-yellow-400">黄色食物</span>：双倍分数效果</li>
-                                <li>• <span className="text-purple-400">紫色食物</span>：护盾保护效果</li>
+                                <li>• <span className="text-orange-400">🍊 橙色食物</span>：{t.snake.specialFood.speed}</li>
+                                <li>• <span className="text-yellow-400">⭐ 金色食物</span>：{t.snake.specialFood.double}</li>
+                                <li>• <span className="text-blue-400">🛡️ 蓝色食物</span>：{t.snake.specialFood.shield}</li>
                             </ul>
                         </div>
                         <div>
-                            <h4 className="font-semibold text-green-300 mb-3 text-lg">🏆 升级系统</h4>
+                            <h4 className="font-semibold text-green-300 mb-3 text-lg">{t.snake.instructions.difficulty}</h4>
                             <ul className="text-gray-300 space-y-2">
-                                <li>• <span className="text-blue-400">等级提升</span>：每50分升一级</li>
-                                <li>• <span className="text-purple-400">速度增加</span>：等级越高移动越快</li>
-                                <li>• <span className="text-yellow-400">难度递增</span>：障碍模式障碍物增多</li>
+                                <li>• 每吃5个食物，等级提升</li>
+                                <li>• 等级越高，蛇移动速度越快</li>
+                                <li>• 特殊食物出现概率随等级增加</li>
+                                <li>• 障碍模式中障碍物会逐渐增多</li>
                             </ul>
                         </div>
                     </div>

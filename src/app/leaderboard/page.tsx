@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useLanguage } from '@/components/LanguageProvider'
 
 interface Score {
     id: number
@@ -11,10 +12,10 @@ interface Score {
 }
 
 export default function Leaderboard() {
+    const { t } = useLanguage()
     const [scores, setScores] = useState<Score[]>([])
-    const [loading, setLoading] = useState<boolean>(true)
-    const [error, setError] = useState<string>('')
-    const [selectedGame, setSelectedGame] = useState<string>('all')
+    const [loading, setLoading] = useState(true)
+    const [selectedGame, setSelectedGame] = useState<'all' | 'snake' | 'survivor'>('all')
 
     useEffect(() => {
         fetchScores()
@@ -22,18 +23,13 @@ export default function Leaderboard() {
 
     const fetchScores = async () => {
         try {
-            setLoading(true)
             const response = await fetch('/api/scores')
-
             if (response.ok) {
                 const data = await response.json()
                 setScores(data)
-            } else {
-                setError('获取排行榜失败')
             }
         } catch (error) {
             console.error('获取排行榜失败:', error)
-            setError('获取排行榜失败')
         } finally {
             setLoading(false)
         }
@@ -44,36 +40,28 @@ export default function Leaderboard() {
         return score.gameType === selectedGame
     })
 
+    const getGameIcon = (gameType: string) => {
+        switch (gameType) {
+            case 'snake':
+                return '🐍'
+            case 'survivor':
+                return '⚔️'
+            default:
+                return '🎮'
+        }
+    }
+
     const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleString('zh-CN')
+        const date = new Date(dateString)
+        return date.toLocaleDateString()
     }
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-100 py-8">
-                <div className="max-w-4xl mx-auto">
+            <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 py-8">
+                <div className="max-w-6xl mx-auto px-4">
                     <div className="text-center">
-                        <div className="text-2xl font-bold text-gray-800 mb-4">排行榜</div>
-                        <div className="text-gray-600">加载中...</div>
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
-    if (error) {
-        return (
-            <div className="min-h-screen bg-gray-100 py-8">
-                <div className="max-w-4xl mx-auto">
-                    <div className="text-center">
-                        <div className="text-2xl font-bold text-gray-800 mb-4">排行榜</div>
-                        <div className="text-red-600 mb-4">{error}</div>
-                        <button
-                            onClick={fetchScores}
-                            className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                        >
-                            重试
-                        </button>
+                        <div className="text-white text-xl">{t.common.loading}</div>
                     </div>
                 </div>
             </div>
@@ -81,143 +69,91 @@ export default function Leaderboard() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 py-8">
-            <div className="max-w-4xl mx-auto">
+        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 py-8">
+            <div className="max-w-6xl mx-auto px-4">
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-gray-800 mb-4">🏆 排行榜</h1>
-                    <p className="text-gray-600 mb-6">看看谁是最强玩家！</p>
-
-                    <div className="flex justify-center space-x-4 mb-6">
-                        <button
-                            onClick={() => setSelectedGame('all')}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${selectedGame === 'all'
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                        >
-                            全部游戏
-                        </button>
-                        <button
-                            onClick={() => setSelectedGame('snake')}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${selectedGame === 'snake'
-                                    ? 'bg-green-600 text-white'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                        >
-                            🐍 贪吃蛇
-                        </button>
-                        <button
-                            onClick={() => setSelectedGame('survivor')}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors ${selectedGame === 'survivor'
-                                    ? 'bg-red-600 text-white'
-                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                        >
-                            ⚔️ 幸存者
-                        </button>
-                    </div>
+                    <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                        {t.leaderboard.title}
+                    </h1>
                 </div>
 
-                {filteredScores.length === 0 ? (
-                    <div className="text-center py-12">
-                        <div className="text-2xl text-gray-500 mb-4">暂无记录</div>
-                        <p className="text-gray-600 mb-6">还没有人提交分数，快去玩游戏吧！</p>
-                        <a
-                            href="/game"
-                            className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-                        >
-                            开始游戏
-                        </a>
-                    </div>
-                ) : (
-                    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-                        <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
-                            <h2 className="text-2xl font-bold">最高分排行榜</h2>
-                            <p className="text-blue-100">共 {filteredScores.length} 条记录</p>
-                        </div>
-
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            排名
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            玩家
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            分数
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            游戏类型
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            提交时间
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {filteredScores.map((score, index) => (
-                                        <tr key={score.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center">
-                                                    {index === 0 && (
-                                                        <span className="text-2xl mr-2">🥇</span>
-                                                    )}
-                                                    {index === 1 && (
-                                                        <span className="text-2xl mr-2">🥈</span>
-                                                    )}
-                                                    {index === 2 && (
-                                                        <span className="text-2xl mr-2">🥉</span>
-                                                    )}
-                                                    <span className={`font-semibold ${index === 0 ? 'text-yellow-600' :
-                                                        index === 1 ? 'text-gray-500' :
-                                                            index === 2 ? 'text-orange-600' : 'text-gray-900'
-                                                        }`}>
-                                                        #{index + 1}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm font-medium text-gray-900">
-                                                    {score.playerName}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm font-bold text-blue-600">
-                                                    {score.score}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-sm text-gray-900">
-                                                    {score.gameType === 'snake' ? '🐍 贪吃蛇' : '⚔️ 幸存者'}
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {formatDate(score.createdAt)}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
-
-                <div className="mt-8 text-center">
+                <div className="flex justify-center space-x-4 mb-6">
                     <button
-                        onClick={fetchScores}
-                        className="bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors mr-4"
+                        onClick={() => setSelectedGame('all')}
+                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                            selectedGame === 'all'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
                     >
-                        刷新排行榜
+                        {t.leaderboard.allGames}
                     </button>
-                    <a
-                        href="/game"
-                        className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                    <button
+                        onClick={() => setSelectedGame('snake')}
+                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                            selectedGame === 'snake'
+                                ? 'bg-green-600 text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
                     >
-                        开始新游戏
-                    </a>
+                        {t.leaderboard.snake}
+                    </button>
+                    <button
+                        onClick={() => setSelectedGame('survivor')}
+                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
+                            selectedGame === 'survivor'
+                                ? 'bg-red-600 text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                    >
+                        {t.leaderboard.survivor}
+                    </button>
+                </div>
+
+                <div className="bg-black bg-opacity-30 backdrop-blur-sm p-8 rounded-2xl shadow-2xl border border-blue-500">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-white">
+                            <thead>
+                                <tr className="border-b border-blue-600">
+                                    <th className="text-left py-3 px-4">{t.leaderboard.rank}</th>
+                                    <th className="text-left py-3 px-4">{t.leaderboard.player}</th>
+                                    <th className="text-left py-3 px-4">{t.leaderboard.score}</th>
+                                    <th className="text-left py-3 px-4">{t.leaderboard.gameType}</th>
+                                    <th className="text-left py-3 px-4">{t.leaderboard.date}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredScores.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5} className="text-center py-8 text-gray-400">
+                                            暂无数据
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredScores.map((score, index) => (
+                                        <tr key={score.id} className="border-b border-blue-800 hover:bg-blue-900 hover:bg-opacity-30 transition-colors">
+                                            <td className="py-3 px-4">
+                                                <span className={`inline-block w-8 h-8 rounded-full text-center leading-8 font-bold ${
+                                                    index === 0 ? 'bg-yellow-500 text-black' :
+                                                    index === 1 ? 'bg-gray-400 text-black' :
+                                                    index === 2 ? 'bg-orange-600 text-white' :
+                                                    'bg-blue-600 text-white'
+                                                }`}>
+                                                    {index + 1}
+                                                </span>
+                                            </td>
+                                            <td className="py-3 px-4 font-semibold">{score.playerName}</td>
+                                            <td className="py-3 px-4 text-yellow-400 font-bold">{score.score}</td>
+                                            <td className="py-3 px-4">
+                                                <span className="text-2xl">{getGameIcon(score.gameType)}</span>
+                                            </td>
+                                            <td className="py-3 px-4 text-gray-300">{formatDate(score.createdAt)}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

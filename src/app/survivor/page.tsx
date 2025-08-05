@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useLanguage } from '@/components/LanguageProvider'
 
 interface Player {
     x: number
@@ -103,6 +104,7 @@ const SPEED_PRESETS = [
 ]
 
 export default function SurvivorGame() {
+    const { t } = useLanguage()
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const [gameState, setGameState] = useState<GameState>({
         player: {
@@ -596,20 +598,20 @@ export default function SurvivorGame() {
             <div className="max-w-6xl mx-auto">
                 <div className="text-center mb-8">
                     <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                        ⚔️ 幸存者游戏
+                        {t.survivor.title}
                     </h1>
 
                     <p className="text-gray-300 mb-6 text-lg">
-                        使用 WASD 或方向键移动，自动攻击敌人，生存越久分数越高！
+                        {t.survivor.description}
                     </p>
 
                     {/* 游戏状态显示 */}
                     {gameState.gameStarted && !gameState.gameOver && (
                         <div className="bg-black bg-opacity-50 rounded-lg p-4 mb-4 inline-block">
                             <div className="text-white text-sm">
-                                <span className="mr-4">🎯 分数: {gameState.score}</span>
-                                <span className="mr-4">⏱️ 时间: {Math.floor(gameState.time / 60)}:{(gameState.time % 60).toString().padStart(2, '0')}</span>
-                                <span className="mr-4">❤️ 生命: {gameState.player.health}</span>
+                                <span className="mr-4">🎯 {t.survivor.stats.score}: {gameState.score}</span>
+                                <span className="mr-4">⏱️ {t.survivor.stats.time}: {Math.floor(gameState.time / 60)}:{(gameState.time % 60).toString().padStart(2, '0')}</span>
+                                <span className="mr-4">❤️ {t.survivor.stats.health}: {gameState.player.health}</span>
                             </div>
                         </div>
                     )}
@@ -632,16 +634,16 @@ export default function SurvivorGame() {
                             onClick={startGame}
                             className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-12 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 shadow-lg"
                         >
-                            🎮 开始游戏
+                            🎮 {t.survivor.gameOver.restart}
                         </button>
                     )}
 
                     {gameState.gameOver && gameState.showGameOver && (
                         <div className="bg-black bg-opacity-80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl max-w-md mx-auto border border-purple-500">
-                            <h2 className="text-3xl font-bold text-white mb-6">🏁 游戏结束</h2>
+                            <h2 className="text-3xl font-bold text-white mb-6">{t.survivor.gameOver.title}</h2>
                             <div className="space-y-3 mb-6">
-                                <p className="text-purple-300 text-lg">🎯 最终分数: <span className="text-yellow-400 font-bold">{gameState.score}</span></p>
-                                <p className="text-purple-300 text-lg">⏱️ 生存时间: <span className="text-cyan-400 font-bold">{Math.floor(gameState.time / 60)}:{(gameState.time % 60).toString().padStart(2, '0')}</span></p>
+                                <p className="text-purple-300 text-lg">{t.survivor.gameOver.finalScore}: <span className="text-yellow-400 font-bold">{gameState.score}</span></p>
+                                <p className="text-purple-300 text-lg">{t.survivor.gameOver.survivalTime}: <span className="text-cyan-400 font-bold">{Math.floor(gameState.time / 60)}:{(gameState.time % 60).toString().padStart(2, '0')}</span></p>
                             </div>
 
                             {!gameState.showSubmitForm ? (
@@ -649,7 +651,7 @@ export default function SurvivorGame() {
                                     onClick={() => setGameState(prev => ({ ...prev, showSubmitForm: true }))}
                                     className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 mr-3"
                                 >
-                                    📊 提交分数
+                                    📊 {t.survivor.gameOver.submitScore}
                                 </button>
                             ) : (
                                 <div className="space-y-4">
@@ -657,7 +659,7 @@ export default function SurvivorGame() {
                                         type="text"
                                         value={gameState.playerName}
                                         onChange={(e) => setGameState(prev => ({ ...prev, playerName: e.target.value }))}
-                                        placeholder="请输入你的名字"
+                                        placeholder={t.survivor.gameOver.enterName}
                                         className="w-full px-4 py-3 border border-purple-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-black bg-opacity-50 text-white placeholder-gray-400"
                                     />
                                     <div className="flex gap-3">
@@ -665,13 +667,13 @@ export default function SurvivorGame() {
                                             onClick={submitScore}
                                             className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105"
                                         >
-                                            提交
+                                            {t.common.submit}
                                         </button>
                                         <button
                                             onClick={() => setGameState(prev => ({ ...prev, showSubmitForm: false }))}
                                             className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105"
                                         >
-                                            取消
+                                            {t.common.cancel}
                                         </button>
                                     </div>
                                 </div>
@@ -681,31 +683,31 @@ export default function SurvivorGame() {
                                 onClick={startGame}
                                 className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 mt-4"
                             >
-                                🔄 重新开始
+                                🔄 {t.survivor.gameOver.restart}
                             </button>
                         </div>
                     )}
                 </div>
 
                 <div className="mt-8 bg-black bg-opacity-50 backdrop-blur-sm p-8 rounded-2xl shadow-2xl border border-purple-500">
-                    <h3 className="text-2xl font-bold text-white mb-6">📖 游戏说明</h3>
+                    <h3 className="text-2xl font-bold text-white mb-6">{t.survivor.instructions.title}</h3>
                     <div className="grid md:grid-cols-2 gap-8">
                         <div>
-                            <h4 className="font-semibold text-purple-300 mb-3 text-lg">🎮 控制方式</h4>
+                            <h4 className="font-semibold text-purple-300 mb-3 text-lg">{t.survivor.instructions.controls}</h4>
                             <ul className="text-gray-300 space-y-2">
-                                <li>• <span className="text-yellow-400">WASD</span> 或 <span className="text-yellow-400">方向键</span>：移动角色</li>
+                                <li>• <span className="text-yellow-400">WASD</span> 或 <span className="text-yellow-400">方向键</span>：{t.survivor.controls}</li>
                                 <li>• <span className="text-green-400">自动攻击</span>：武器会自动攻击附近的敌人</li>
                                 <li>• <span className="text-red-400">躲避敌人</span>：不要让敌人碰到你</li>
                             </ul>
                         </div>
                         <div>
-                            <h4 className="font-semibold text-purple-300 mb-3 text-lg">⚔️ 武器系统</h4>
+                            <h4 className="font-semibold text-purple-300 mb-3 text-lg">{t.survivor.instructions.weapons}</h4>
                             <ul className="text-gray-300 space-y-2">
-                                <li>• <span className="text-orange-400">鞭子</span>：近距离扇形攻击</li>
-                                <li>• <span className="text-blue-400">魔法杖</span>：直线魔法弹</li>
-                                <li>• <span className="text-red-400">火球术</span>：大范围爆炸攻击</li>
-                                <li>• <span className="text-yellow-400">闪电链</span>：穿透攻击</li>
-                                <li>• <span className="text-cyan-400">冰锥</span>：高伤害直线攻击</li>
+                                <li>• <span className="text-orange-400">{t.survivor.weapons.whip}</span>：近距离扇形攻击</li>
+                                <li>• <span className="text-blue-400">{t.survivor.weapons.magicWand}</span>：直线魔法弹</li>
+                                <li>• <span className="text-red-400">{t.survivor.weapons.fireball}</span>：大范围爆炸攻击</li>
+                                <li>• <span className="text-yellow-400">{t.survivor.weapons.lightning}</span>：穿透攻击</li>
+                                <li>• <span className="text-cyan-400">{t.survivor.weapons.iceSpike}</span>：高伤害直线攻击</li>
                                 <li>• <span className="text-purple-400">每45秒武器自动升级</span></li>
                             </ul>
                         </div>
