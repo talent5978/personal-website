@@ -3,717 +3,783 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLanguage } from '@/components/LanguageProvider'
 
+// 游戏配置
+const GAME_CONFIG = {
+  CANVAS_WIDTH: 1200,
+  CANVAS_HEIGHT: 800,
+  PLAYER_SPEED: 3,
+  ENEMY_BASE_SPEED: 1.5,
+  EXPERIENCE_RANGE: 50,
+  LEVEL_UP_EXPERIENCE_BASE: 100,
+  WEAPON_COOLDOWNS: {
+    magic_missile: 800,
+    fireball: 1200,
+    lightning: 600,
+    ice_shard: 1000,
+    holy_water: 2000
+  }
+}
+
+// 接口定义
 interface Player {
-    x: number
-    y: number
-    size: number
-    speed: number
-    health: number
-    maxHealth: number
+  x: number
+  y: number
+  level: number
+  experience: number
+  experienceToNext: number
+  health: number
+  maxHealth: number
+  speed: number
 }
 
 interface Enemy {
-    id: number
-    x: number
-    y: number
-    size: number
-    speed: number
-    health: number
-    maxHealth: number
+  id: number
+  x: number
+  y: number
+  health: number
+  maxHealth: number
+  speed: number
+  type: 'zombie' | 'skeleton' | 'bat' | 'ghost'
+  damage: number
+  experienceValue: number
 }
 
 interface Weapon {
-    id: string
-    name: string
-    damage: number
-    range: number
-    cooldown: number
-    lastFired: number
-    level: number
-    maxLevel: number
+  id: string
+  name: string
+  level: number
+  damage: number
+  cooldown: number
+  lastFired: number
+  projectileSpeed: number
+  range: number
+  description: string
 }
 
 interface Projectile {
-    id: number
-    x: number
-    y: number
-    vx: number
-    vy: number
-    size: number
-    damage: number
-    weaponId: string
+  id: number
+  x: number
+  y: number
+  vx: number
+  vy: number
+  damage: number
+  weaponId: string
+  size: number
+  color: string
 }
 
-interface GameState {
-    player: Player
-    enemies: Enemy[]
-    weapons: Weapon[]
-    projectiles: Projectile[]
-    score: number
-    time: number
-    gameStarted: boolean
-    gameOver: boolean
-    showGameOver: boolean
-    playerName: string
-    showSubmitForm: boolean
+interface ExperienceGem {
+  id: number
+  x: number
+  y: number
+  value: number
+  collected: boolean
 }
 
-const WEAPONS = {
-    whip: {
-        name: '鞭子',
-        damage: 25,
-        range: 80,
-        cooldown: 400,
-        maxLevel: 5
-    },
-    magicWand: {
-        name: '魔法杖',
-        damage: 20,
-        range: 150,
-        cooldown: 250,
-        maxLevel: 5
-    },
-    fireball: {
-        name: '火球术',
-        damage: 35,
-        range: 200,
-        cooldown: 600,
-        maxLevel: 4
-    },
-    lightning: {
-        name: '闪电链',
-        damage: 30,
-        range: 180,
-        cooldown: 800,
-        maxLevel: 3
-    },
-    iceSpike: {
-        name: '冰锥',
-        damage: 40,
-        range: 120,
-        cooldown: 500,
-        maxLevel: 4
+export default function VampireSurvivorGame() {
+  const { t } = useLanguage()
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const gameLoopRef = useRef<number>()
+  const keysRef = useRef<Set<string>>(new Set())
+  
+  // 游戏状态
+  const [gameState, setGameState] = useState<'menu' | 'playing' | 'paused' | 'levelUp' | 'gameOver'>('menu')
+  const [score, setScore] = useState(0)
+  const [timeElapsed, setTimeElapsed] = useState(0)
+  const [waveNumber, setWaveNumber] = useState(1)
+  
+  // 游戏对象
+  const [player, setPlayer] = useState<Player>({
+    x: GAME_CONFIG.CANVAS_WIDTH / 2,
+    y: GAME_CONFIG.CANVAS_HEIGHT / 2,
+    level: 1,
+    experience: 0,
+    experienceToNext: GAME_CONFIG.LEVEL_UP_EXPERIENCE_BASE,
+    health: 100,
+    maxHealth: 100,
+    speed: GAME_CONFIG.PLAYER_SPEED
+  })
+  
+  const [enemies, setEnemies] = useState<Enemy[]>([])
+  const [projectiles, setProjectiles] = useState<Projectile[]>([])
+  const [experienceGems, setExperienceGems] = useState<ExperienceGem[]>([])
+  const [weapons, setWeapons] = useState<Weapon[]>([
+    {
+      id: 'magic_missile',
+      name: '魔法导弹',
+      level: 1,
+      damage: 25,
+      cooldown: GAME_CONFIG.WEAPON_COOLDOWNS.magic_missile,
+      lastFired: 0,
+      projectileSpeed: 8,
+      range: 300,
+      description: '自动追踪最近的敌人'
     }
-}
-
-const SPEED_PRESETS = [
-    { label: '慢速', value: 1.5 },
-    { label: '标准', value: 1 },
-    { label: '快速', value: 0.7 },
-    { label: '极限', value: 0.5 }
-]
-
-export default function SurvivorGame() {
-    const { t } = useLanguage()
-    const canvasRef = useRef<HTMLCanvasElement>(null)
-    const [gameState, setGameState] = useState<GameState>({
-        player: {
-            x: 400,
-            y: 300,
-            size: 15,
-            speed: 5,
-            health: 100,
-            maxHealth: 100
-        },
-        enemies: [],
-        weapons: [
-            { id: 'whip', name: '鞭子', damage: 25, range: 80, cooldown: 400, lastFired: 0, level: 1, maxLevel: 5 },
-            { id: 'magicWand', name: '魔法杖', damage: 20, range: 150, cooldown: 250, lastFired: 0, level: 1, maxLevel: 5 },
-            { id: 'fireball', name: '火球术', damage: 35, range: 200, cooldown: 600, lastFired: 0, level: 1, maxLevel: 4 },
-            { id: 'lightning', name: '闪电链', damage: 30, range: 180, cooldown: 800, lastFired: 0, level: 1, maxLevel: 3 },
-            { id: 'iceSpike', name: '冰锥', damage: 40, range: 120, cooldown: 500, lastFired: 0, level: 1, maxLevel: 4 }
-        ],
-        projectiles: [],
-        score: 0,
-        time: 0,
-        gameStarted: false,
-        gameOver: false,
-        showGameOver: false,
-        playerName: '',
-        showSubmitForm: false
-    })
-    const [speedFactor, setSpeedFactor] = useState(1)
-
-    const [keys, setKeys] = useState<Set<string>>(new Set())
-    const animationRef = useRef<number>()
-
-    // 键盘事件处理
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            setKeys(prev => new Set(prev).add(e.key))
-        }
-
-        const handleKeyUp = (e: KeyboardEvent) => {
-            setKeys(prev => {
-                const newKeys = new Set(prev)
-                newKeys.delete(e.key)
-                return newKeys
-            })
-        }
-
-        window.addEventListener('keydown', handleKeyDown)
-        window.addEventListener('keyup', handleKeyUp)
-
-        return () => {
-            window.removeEventListener('keydown', handleKeyDown)
-            window.removeEventListener('keyup', handleKeyUp)
-        }
-    }, [])
-
-    // 开始游戏
-    const startGame = () => {
-        setGameState(prev => ({
-            ...prev,
-            gameStarted: true,
-            gameOver: false,
-            showGameOver: false,
-            score: 0,
-            time: 0,
-            player: {
-                ...prev.player,
-                health: prev.player.maxHealth
-            },
-            enemies: [],
-            projectiles: [],
-            weapons: [
-                { ...WEAPONS.whip, id: 'whip', lastFired: 0, level: 1 },
-                { ...WEAPONS.magicWand, id: 'magicWand', lastFired: 0, level: 1 },
-                { ...WEAPONS.fireball, id: 'fireball', lastFired: 0, level: 1 },
-                { ...WEAPONS.lightning, id: 'lightning', lastFired: 0, level: 1 },
-                { ...WEAPONS.iceSpike, id: 'iceSpike', lastFired: 0, level: 1 }
-            ]
-        }))
+  ])
+  
+  const [availableWeapons] = useState<Omit<Weapon, 'level' | 'lastFired'>[]>([
+    {
+      id: 'fireball',
+      name: '火球术',
+      damage: 45,
+      cooldown: GAME_CONFIG.WEAPON_COOLDOWNS.fireball,
+      projectileSpeed: 6,
+      range: 250,
+      description: '造成范围伤害的火球'
+    },
+    {
+      id: 'lightning',
+      name: '闪电链',
+      damage: 35,
+      cooldown: GAME_CONFIG.WEAPON_COOLDOWNS.lightning,
+      projectileSpeed: 12,
+      range: 400,
+      description: '瞬间击中敌人的闪电'
+    },
+    {
+      id: 'ice_shard',
+      name: '冰锥术',
+      damage: 30,
+      cooldown: GAME_CONFIG.WEAPON_COOLDOWNS.ice_shard,
+      projectileSpeed: 7,
+      range: 280,
+      description: '减慢敌人移动速度'
+    },
+    {
+      id: 'holy_water',
+      name: '圣水',
+      damage: 80,
+      cooldown: GAME_CONFIG.WEAPON_COOLDOWNS.holy_water,
+      projectileSpeed: 5,
+      range: 200,
+      description: '对不死生物造成额外伤害'
     }
+  ])
+  
+  const [levelUpOptions, setLevelUpOptions] = useState<(Weapon | { type: 'stat', name: string, description: string })[]>([])
 
-    // 生成敌人
-    const spawnEnemy = useCallback(() => {
-        const side = Math.floor(Math.random() * 4)
-        let x = 0, y = 0
+  // 键盘事件处理
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      keysRef.current.add(e.key.toLowerCase())
+      if (e.key === 'Escape') {
+        setGameState(prev => prev === 'playing' ? 'paused' : prev === 'paused' ? 'playing' : prev)
+      }
+    }
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keysRef.current.delete(e.key.toLowerCase())
+    }
+    
+    window.addEventListener('keydown', handleKeyDown)
+    window.addEventListener('keyup', handleKeyUp)
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [])
 
-        switch (side) {
-            case 0: // 上
-                x = Math.random() * 800
-                y = -20
-                break
-            case 1: // 右
-                x = 820
-                y = Math.random() * 600
-                break
-            case 2: // 下
-                x = Math.random() * 800
-                y = 620
-                break
-            case 3: // 左
-                x = -20
-                y = Math.random() * 600
-                break
-        }
+  // 生成敌人
+  const spawnEnemies = useCallback(() => {
+    const enemyTypes: Enemy['type'][] = ['zombie', 'skeleton', 'bat', 'ghost']
+    const enemiesPerWave = Math.min(5 + Math.floor(timeElapsed / 30), 20)
+    
+    for (let i = 0; i < enemiesPerWave; i++) {
+      const side = Math.floor(Math.random() * 4)
+      let x, y
+      
+      switch (side) {
+        case 0: // 上
+          x = Math.random() * GAME_CONFIG.CANVAS_WIDTH
+          y = -50
+          break
+        case 1: // 右
+          x = GAME_CONFIG.CANVAS_WIDTH + 50
+          y = Math.random() * GAME_CONFIG.CANVAS_HEIGHT
+          break
+        case 2: // 下
+          x = Math.random() * GAME_CONFIG.CANVAS_WIDTH
+          y = GAME_CONFIG.CANVAS_HEIGHT + 50
+          break
+        default: // 左
+          x = -50
+          y = Math.random() * GAME_CONFIG.CANVAS_HEIGHT
+      }
+      
+      const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)]
+      const baseHealth = 50 + Math.floor(timeElapsed / 10) * 10
+      
+      const enemy: Enemy = {
+        id: Date.now() + Math.random(),
+        x,
+        y,
+        type,
+        health: baseHealth,
+        maxHealth: baseHealth,
+        speed: GAME_CONFIG.ENEMY_BASE_SPEED + Math.random() * 0.5,
+        damage: 10 + Math.floor(timeElapsed / 20) * 5,
+        experienceValue: 10 + Math.floor(timeElapsed / 15) * 2
+      }
+      
+      setEnemies(prev => [...prev, enemy])
+    }
+  }, [timeElapsed])
 
-        const enemy: Enemy = {
+  // 发射投射物
+  const fireWeapons = useCallback(() => {
+    const currentTime = Date.now()
+    
+    weapons.forEach(weapon => {
+      if (currentTime - weapon.lastFired >= weapon.cooldown && enemies.length > 0) {
+        // 找到最近的敌人
+        let nearestEnemy = enemies[0]
+        let minDistance = Infinity
+        
+        enemies.forEach(enemy => {
+          const distance = Math.sqrt(
+            Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2)
+          )
+          if (distance < minDistance && distance <= weapon.range) {
+            minDistance = distance
+            nearestEnemy = enemy
+          }
+        })
+        
+        if (minDistance <= weapon.range) {
+          const angle = Math.atan2(nearestEnemy.y - player.y, nearestEnemy.x - player.x)
+          
+          const projectile: Projectile = {
             id: Date.now() + Math.random(),
-            x,
-            y,
-            size: 12 + Math.random() * 8,
-            speed: 0.8 + Math.random() * 1.5,
-            health: 25 + Math.floor(gameState.time / 60) * 8,
-            maxHealth: 25 + Math.floor(gameState.time / 60) * 8
+            x: player.x,
+            y: player.y,
+            vx: Math.cos(angle) * weapon.projectileSpeed,
+            vy: Math.sin(angle) * weapon.projectileSpeed,
+            damage: weapon.damage,
+            weaponId: weapon.id,
+            size: weapon.id === 'fireball' ? 12 : weapon.id === 'holy_water' ? 15 : 8,
+            color: weapon.id === 'magic_missile' ? '#9333ea' : 
+                   weapon.id === 'fireball' ? '#f97316' :
+                   weapon.id === 'lightning' ? '#eab308' :
+                   weapon.id === 'ice_shard' ? '#06b6d4' : '#10b981'
+          }
+          
+          setProjectiles(prev => [...prev, projectile])
+          setWeapons(prev => prev.map(w => 
+            w.id === weapon.id ? { ...w, lastFired: currentTime } : w
+          ))
         }
+      }
+    })
+  }, [weapons, enemies, player])
 
-        setGameState(prev => ({
-            ...prev,
-            enemies: [...prev.enemies, enemy]
-        }))
-    }, [gameState.time])
-
-    // 武器射击
-    const fireWeapon = useCallback((weapon: Weapon, player: Player) => {
-        const now = Date.now()
-        if (now - weapon.lastFired < weapon.cooldown) return
-
-        const projectiles: Projectile[] = []
-
-        // 根据武器类型生成不同的投射物
-        switch (weapon.id) {
-            case 'whip':
-                // 鞭子：近距离扇形攻击
-                for (let i = 0; i < 3; i++) {
-                    const angle = (i - 1) * 0.3
-                    projectiles.push({
-                        id: Date.now() + i,
-                        x: player.x,
-                        y: player.y,
-                        vx: Math.cos(angle) * 8,
-                        vy: Math.sin(angle) * 8,
-                        size: 8,
-                        damage: weapon.damage * weapon.level,
-                        weaponId: weapon.id
-                    })
-                }
-                break
-
-            case 'magicWand':
-                // 魔法杖：直线魔法弹
-                const targetX = player.x + (Math.random() - 0.5) * 200
-                const targetY = player.y + (Math.random() - 0.5) * 200
-                const dx = targetX - player.x
-                const dy = targetY - player.y
-                const distance = Math.sqrt(dx * dx + dy * dy) || 1
-
-                projectiles.push({
-                    id: Date.now(),
-                    x: player.x,
-                    y: player.y,
-                    vx: (dx / distance) * 6,
-                    vy: (dy / distance) * 6,
-                    size: 6,
-                    damage: weapon.damage * weapon.level,
-                    weaponId: weapon.id
-                })
-                break
-
-            case 'fireball':
-                // 火球术：大范围爆炸
-                for (let i = 0; i < 5; i++) {
-                    const angle = (i - 2) * 0.4
-                    projectiles.push({
-                        id: Date.now() + i,
-                        x: player.x,
-                        y: player.y,
-                        vx: Math.cos(angle) * 5,
-                        vy: Math.sin(angle) * 5,
-                        size: 10,
-                        damage: weapon.damage * weapon.level,
-                        weaponId: weapon.id
-                    })
-                }
-                break
-
-            case 'lightning':
-                // 闪电链：穿透攻击
-                const lightningTargetX = player.x + (Math.random() - 0.5) * 300
-                const lightningTargetY = player.y + (Math.random() - 0.5) * 300
-                const lightningDx = lightningTargetX - player.x
-                const lightningDy = lightningTargetY - player.y
-                const lightningDistance = Math.sqrt(lightningDx * lightningDx + lightningDy * lightningDy) || 1
-
-                projectiles.push({
-                    id: Date.now(),
-                    x: player.x,
-                    y: player.y,
-                    vx: (lightningDx / lightningDistance) * 8,
-                    vy: (lightningDy / lightningDistance) * 8,
-                    size: 4,
-                    damage: weapon.damage * weapon.level,
-                    weaponId: weapon.id
-                })
-                break
-
-            case 'iceSpike':
-                // 冰锥：高伤害直线攻击
-                const iceTargetX = player.x + (Math.random() - 0.5) * 150
-                const iceTargetY = player.y + (Math.random() - 0.5) * 150
-                const iceDx = iceTargetX - player.x
-                const iceDy = iceTargetY - player.y
-                const iceDistance = Math.sqrt(iceDx * iceDx + iceDy * iceDy) || 1
-
-                projectiles.push({
-                    id: Date.now(),
-                    x: player.x,
-                    y: player.y,
-                    vx: (iceDx / iceDistance) * 7,
-                    vy: (iceDy / iceDistance) * 7,
-                    size: 7,
-                    damage: weapon.damage * weapon.level,
-                    weaponId: weapon.id
-                })
-                break
-        }
-
-        setGameState(prev => ({
-            ...prev,
-            projectiles: [...prev.projectiles, ...projectiles],
-            weapons: prev.weapons.map(w =>
-                w.id === weapon.id ? { ...w, lastFired: now } : w
-            )
-        }))
-    }, [])
-
-    // 游戏主循环
-    const gameLoop = useCallback(() => {
-        if (!gameState.gameStarted || gameState.gameOver) return
-
-        setGameState(prev => {
-            const newState = { ...prev }
-
-            // 更新玩家位置
-            if (keys.has('w') || keys.has('ArrowUp')) newState.player.y -= newState.player.speed
-            if (keys.has('s') || keys.has('ArrowDown')) newState.player.y += newState.player.speed
-            if (keys.has('a') || keys.has('ArrowLeft')) newState.player.x -= newState.player.speed
-            if (keys.has('d') || keys.has('ArrowRight')) newState.player.x += newState.player.speed
-
-            // 边界检查
-            newState.player.x = Math.max(newState.player.size, Math.min(800 - newState.player.size, newState.player.x))
-            newState.player.y = Math.max(newState.player.size, Math.min(600 - newState.player.size, newState.player.y))
-
-            // 更新敌人
-            newState.enemies = newState.enemies.map(enemy => {
-                // 敌人向玩家移动
-                const dx = newState.player.x - enemy.x
-                const dy = newState.player.y - enemy.y
-                const distance = Math.sqrt(dx * dx + dy * dy)
-
-                if (distance > 0) {
-                    enemy.x += (dx / distance) * enemy.speed * speedFactor
-                    enemy.y += (dy / distance) * enemy.speed * speedFactor
-                }
-
-                return enemy
-            }).filter(enemy => {
-                // 移除超出屏幕的敌人
-                return enemy.x > -50 && enemy.x < 850 && enemy.y > -50 && enemy.y < 650
-            })
-
-            // 更新投射物
-            newState.projectiles = newState.projectiles.map(projectile => {
-                projectile.x += projectile.vx
-                projectile.y += projectile.vy
-                return projectile
-            }).filter(projectile => {
-                // 移除超出屏幕的投射物
-                return projectile.x > -20 && projectile.x < 820 && projectile.y > -20 && projectile.y < 620
-            })
-
-            // 检测投射物与敌人的碰撞
-            newState.projectiles = newState.projectiles.filter(projectile => {
-                let hit = false
-                newState.enemies = newState.enemies.map(enemy => {
-                    const dx = projectile.x - enemy.x
-                    const dy = projectile.y - enemy.y
-                    const distance = Math.sqrt(dx * dx + dy * dy)
-
-                    if (distance < enemy.size + projectile.size) {
-                        enemy.health -= projectile.damage
-                        hit = true
-                    }
-                    return enemy
-                })
-
-                // 移除死亡的敌人
-                newState.enemies = newState.enemies.filter(enemy => {
-                    if (enemy.health <= 0) {
-                        newState.score += 10
-                        return false
-                    }
-                    return true
-                })
-
-                return !hit
-            })
-
-            // 检测玩家与敌人的碰撞
-            newState.enemies.forEach(enemy => {
-                const dx = newState.player.x - enemy.x
-                const dy = newState.player.y - enemy.y
-                const distance = Math.sqrt(dx * dx + dy * dy)
-
-                if (distance < newState.player.size + enemy.size) {
-                    newState.player.health -= 1
-                }
-            })
-
-            // 检查游戏结束
-            if (newState.player.health <= 0) {
-                newState.gameOver = true
-                newState.showGameOver = true
-                return newState
-            }
-
-            // 武器射击
-            newState.weapons.forEach(weapon => {
-                fireWeapon(weapon, newState.player)
-            })
-
-            // 生成敌人（降低生成频率）
-            if (Math.random() < 0.01 + newState.time / 2000) {
-                spawnEnemy()
-            }
-
-            // 升级武器（每45秒）
-            if (newState.time % 45 === 0 && newState.time > 0) {
-                newState.weapons = newState.weapons.map(weapon => {
-                    if (weapon.level < weapon.maxLevel) {
-                        return { ...weapon, level: weapon.level + 1 }
-                    }
-                    return weapon
-                })
-            }
-
-            newState.time += 1
-            return newState
-        })
-
-        animationRef.current = requestAnimationFrame(gameLoop)
-    }, [gameState.gameStarted, gameState.gameOver, keys, fireWeapon, spawnEnemy, speedFactor])
-
-    // 游戏循环
-    useEffect(() => {
-        if (gameState.gameStarted && !gameState.gameOver) {
-            gameLoop()
-        }
-        return () => {
-            if (animationRef.current) {
-                cancelAnimationFrame(animationRef.current)
-            }
-        }
-    }, [gameState.gameStarted, gameState.gameOver, gameLoop])
-
-    // 渲染游戏
-    useEffect(() => {
-        const canvas = canvasRef.current
-        if (!canvas) return
-
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-
-        // 清空画布
-        ctx.clearRect(0, 0, 800, 600)
-
-        // 绘制背景
-        ctx.fillStyle = '#1a1a1a'
-        ctx.fillRect(0, 0, 800, 600)
-
-        // 绘制玩家
-        ctx.fillStyle = '#4CAF50'
-        ctx.beginPath()
-        ctx.arc(gameState.player.x, gameState.player.y, gameState.player.size, 0, Math.PI * 2)
-        ctx.fill()
-
-        // 绘制玩家血条
-        const healthBarWidth = 40
-        const healthBarHeight = 4
-        const healthPercentage = gameState.player.health / gameState.player.maxHealth
-
-        ctx.fillStyle = '#ff4444'
-        ctx.fillRect(gameState.player.x - healthBarWidth / 2, gameState.player.y - gameState.player.size - 10, healthBarWidth, healthBarHeight)
-
-        ctx.fillStyle = '#44ff44'
-        ctx.fillRect(gameState.player.x - healthBarWidth / 2, gameState.player.y - gameState.player.size - 10, healthBarWidth * healthPercentage, healthBarHeight)
-
-        // 绘制敌人
-        gameState.enemies.forEach(enemy => {
-            ctx.fillStyle = '#ff4444'
-            ctx.beginPath()
-            ctx.arc(enemy.x, enemy.y, enemy.size, 0, Math.PI * 2)
-            ctx.fill()
-
-            // 绘制敌人血条
-            const enemyHealthPercentage = enemy.health / enemy.maxHealth
-            ctx.fillStyle = '#ff0000'
-            ctx.fillRect(enemy.x - enemy.size, enemy.y - enemy.size - 8, enemy.size * 2, 3)
-            ctx.fillStyle = '#00ff00'
-            ctx.fillRect(enemy.x - enemy.size, enemy.y - enemy.size - 8, enemy.size * 2 * enemyHealthPercentage, 3)
-        })
-
-        // 绘制投射物
-        gameState.projectiles.forEach(projectile => {
-            switch (projectile.weaponId) {
-                case 'whip':
-                    ctx.fillStyle = '#ffaa00'
-                    break
-                case 'magicWand':
-                    ctx.fillStyle = '#00aaff'
-                    break
-                case 'fireball':
-                    ctx.fillStyle = '#ff4400'
-                    break
-                case 'lightning':
-                    ctx.fillStyle = '#ffff00'
-                    break
-                case 'iceSpike':
-                    ctx.fillStyle = '#00ffff'
-                    break
-                default:
-                    ctx.fillStyle = '#ffffff'
-            }
-
-            ctx.beginPath()
-            ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2)
-            ctx.fill()
-        })
-
-        // 绘制UI
-        ctx.fillStyle = '#ffffff'
-        ctx.font = '20px Arial'
-        ctx.fillText(`分数: ${gameState.score}`, 10, 30)
-        ctx.fillText(`时间: ${Math.floor(gameState.time / 60)}:${(gameState.time % 60).toString().padStart(2, '0')}`, 10, 60)
-        ctx.fillText(`生命: ${gameState.player.health}`, 10, 90)
-
-        // 绘制武器信息
-        ctx.font = '12px Arial'
-        gameState.weapons.forEach((weapon, index) => {
-            ctx.fillStyle = '#ffffff'
-            ctx.fillText(`${weapon.name} Lv.${weapon.level}`, 10, 120 + index * 15)
-        })
-
-    }, [gameState])
-
-    // 提交分数
-    const submitScore = async () => {
-        if (!gameState.playerName.trim()) {
-            alert('请输入你的名字')
-            return
-        }
-
-        try {
-            const response = await fetch('/api/scores', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    playerName: gameState.playerName,
-                    score: gameState.score,
-                    gameType: 'survivor'
-                }),
-            })
-
-            if (response.ok) {
-                alert('分数提交成功！')
-                setGameState(prev => ({
-                    ...prev,
-                    showSubmitForm: false,
-                    playerName: ''
-                }))
-            } else {
-                alert('分数提交失败，请重试')
-            }
-        } catch (error) {
-            console.error('提交分数失败:', error)
-            alert('分数提交失败，请重试')
-        }
+  // 游戏主循环
+  const gameLoop = useCallback(() => {
+    if (gameState !== 'playing') return
+    
+    const canvas = canvasRef.current
+    if (!canvas) return
+    
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    // 清空画布
+    ctx.fillStyle = '#1a1a2e'
+    ctx.fillRect(0, 0, GAME_CONFIG.CANVAS_WIDTH, GAME_CONFIG.CANVAS_HEIGHT)
+    
+    // 移动玩家
+    let newPlayerX = player.x
+    let newPlayerY = player.y
+    
+    if (keysRef.current.has('w') || keysRef.current.has('arrowup')) {
+      newPlayerY = Math.max(25, player.y - player.speed)
     }
+    if (keysRef.current.has('s') || keysRef.current.has('arrowdown')) {
+      newPlayerY = Math.min(GAME_CONFIG.CANVAS_HEIGHT - 25, player.y + player.speed)
+    }
+    if (keysRef.current.has('a') || keysRef.current.has('arrowleft')) {
+      newPlayerX = Math.max(25, player.x - player.speed)
+    }
+    if (keysRef.current.has('d') || keysRef.current.has('arrowright')) {
+      newPlayerX = Math.min(GAME_CONFIG.CANVAS_WIDTH - 25, player.x + player.speed)
+    }
+    
+    setPlayer(prev => ({ ...prev, x: newPlayerX, y: newPlayerY }))
+    
+    // 绘制玩家
+    ctx.fillStyle = '#3b82f6'
+    ctx.beginPath()
+    ctx.arc(newPlayerX, newPlayerY, 20, 0, Math.PI * 2)
+    ctx.fill()
+    
+    // 玩家血条
+    ctx.fillStyle = '#ef4444'
+    ctx.fillRect(newPlayerX - 25, newPlayerY - 35, 50, 6)
+    ctx.fillStyle = '#22c55e'
+    ctx.fillRect(newPlayerX - 25, newPlayerY - 35, (player.health / player.maxHealth) * 50, 6)
+    
+    // 发射武器
+    fireWeapons()
+    
+    // 更新投射物
+    setProjectiles(prev => prev.map(projectile => ({
+      ...projectile,
+      x: projectile.x + projectile.vx,
+      y: projectile.y + projectile.vy
+    })).filter(projectile => 
+      projectile.x > -50 && projectile.x < GAME_CONFIG.CANVAS_WIDTH + 50 &&
+      projectile.y > -50 && projectile.y < GAME_CONFIG.CANVAS_HEIGHT + 50
+    ))
+    
+    // 绘制投射物
+    projectiles.forEach(projectile => {
+      ctx.fillStyle = projectile.color
+      ctx.beginPath()
+      ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2)
+      ctx.fill()
+      
+      // 添加发光效果
+      ctx.shadowColor = projectile.color
+      ctx.shadowBlur = 10
+      ctx.beginPath()
+      ctx.arc(projectile.x, projectile.y, projectile.size / 2, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.shadowBlur = 0
+    })
+    
+    // 更新敌人
+    setEnemies(prev => prev.map(enemy => {
+      const angle = Math.atan2(newPlayerY - enemy.y, newPlayerX - enemy.x)
+      return {
+        ...enemy,
+        x: enemy.x + Math.cos(angle) * enemy.speed,
+        y: enemy.y + Math.sin(angle) * enemy.speed
+      }
+    }))
+    
+    // 绘制敌人
+    enemies.forEach(enemy => {
+      let color = '#ef4444'
+      switch (enemy.type) {
+        case 'skeleton': color = '#f3f4f6'; break
+        case 'bat': color = '#7c3aed'; break
+        case 'ghost': color = '#6b7280'; break
+      }
+      
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.arc(enemy.x, enemy.y, 15, 0, Math.PI * 2)
+      ctx.fill()
+      
+      // 敌人血条
+      if (enemy.health < enemy.maxHealth) {
+        ctx.fillStyle = '#ef4444'
+        ctx.fillRect(enemy.x - 15, enemy.y - 25, 30, 4)
+        ctx.fillStyle = '#22c55e'
+        ctx.fillRect(enemy.x - 15, enemy.y - 25, (enemy.health / enemy.maxHealth) * 30, 4)
+      }
+    })
+    
+    // 碰撞检测：投射物与敌人
+    projectiles.forEach(projectile => {
+      enemies.forEach(enemy => {
+        const distance = Math.sqrt(
+          Math.pow(projectile.x - enemy.x, 2) + Math.pow(projectile.y - enemy.y, 2)
+        )
+        
+        if (distance < projectile.size + 15) {
+          // 造成伤害
+          setEnemies(prev => prev.map(e => 
+            e.id === enemy.id ? { ...e, health: e.health - projectile.damage } : e
+          ))
+          
+          // 移除投射物
+          setProjectiles(prev => prev.filter(p => p.id !== projectile.id))
+        }
+      })
+    })
+    
+    // 移除死亡敌人并生成经验宝石
+    setEnemies(prev => {
+      const aliveenemies = prev.filter(enemy => {
+        if (enemy.health <= 0) {
+          // 生成经验宝石
+          setExperienceGems(prevGems => [...prevGems, {
+            id: Date.now() + Math.random(),
+            x: enemy.x,
+            y: enemy.y,
+            value: enemy.experienceValue,
+            collected: false
+          }])
+          setScore(prevScore => prevScore + enemy.experienceValue * 10)
+          return false
+        }
+        return true
+      })
+      return aliveenemies
+    })
+    
+    // 绘制经验宝石
+    experienceGems.forEach(gem => {
+      if (!gem.collected) {
+        ctx.fillStyle = '#10b981'
+        ctx.beginPath()
+        ctx.arc(gem.x, gem.y, 8, 0, Math.PI * 2)
+        ctx.fill()
+        
+        ctx.shadowColor = '#10b981'
+        ctx.shadowBlur = 15
+        ctx.beginPath()
+        ctx.arc(gem.x, gem.y, 4, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.shadowBlur = 0
+      }
+    })
+    
+    // 收集经验宝石
+    setExperienceGems(prev => prev.map(gem => {
+      const distance = Math.sqrt(
+        Math.pow(gem.x - newPlayerX, 2) + Math.pow(gem.y - newPlayerY, 2)
+      )
+      
+      if (distance < GAME_CONFIG.EXPERIENCE_RANGE && !gem.collected) {
+        setPlayer(prevPlayer => {
+          const newExp = prevPlayer.experience + gem.value
+          if (newExp >= prevPlayer.experienceToNext) {
+            // 升级
+            setTimeout(() => {
+              setGameState('levelUp')
+              generateLevelUpOptions()
+            }, 100)
+            
+            return {
+              ...prevPlayer,
+              experience: newExp - prevPlayer.experienceToNext,
+              experienceToNext: Math.floor(prevPlayer.experienceToNext * 1.2),
+              level: prevPlayer.level + 1,
+              maxHealth: prevPlayer.maxHealth + 10,
+              health: Math.min(prevPlayer.health + 20, prevPlayer.maxHealth + 10)
+            }
+          }
+          return { ...prevPlayer, experience: newExp }
+        })
+        return { ...gem, collected: true }
+      }
+      return gem
+    }).filter(gem => !gem.collected))
+    
+    // 碰撞检测：玩家与敌人
+    enemies.forEach(enemy => {
+      const distance = Math.sqrt(
+        Math.pow(enemy.x - newPlayerX, 2) + Math.pow(enemy.y - newPlayerY, 2)
+      )
+      
+      if (distance < 35) {
+        setPlayer(prev => {
+          const newHealth = prev.health - enemy.damage
+          if (newHealth <= 0) {
+            setGameState('gameOver')
+          }
+          return { ...prev, health: Math.max(0, newHealth) }
+        })
+      }
+    })
+    
+    gameLoopRef.current = requestAnimationFrame(gameLoop)
+  }, [gameState, player, enemies, projectiles, experienceGems, fireWeapons])
 
-    return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-900 py-8">
-            <div className="max-w-6xl mx-auto">
-                <div className="text-center mb-8">
-                    <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                        {t.survivor.title}
-                    </h1>
-
-                    <p className="text-gray-300 mb-6 text-lg">
-                        {t.survivor.description}
-                    </p>
-
-                    {/* 游戏状态显示 */}
-                    {gameState.gameStarted && !gameState.gameOver && (
-                        <div className="bg-black bg-opacity-50 rounded-lg p-4 mb-4 inline-block">
-                            <div className="text-white text-sm">
-                                <span className="mr-4">🎯 {t.survivor.stats.score}: {gameState.score}</span>
-                                <span className="mr-4">⏱️ {t.survivor.stats.time}: {Math.floor(gameState.time / 60)}:{(gameState.time % 60).toString().padStart(2, '0')}</span>
-                                <span className="mr-4">❤️ {t.survivor.stats.health}: {gameState.player.health}</span>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="flex justify-center mb-6">
-                    <div className="bg-black bg-opacity-30 p-6 rounded-xl shadow-2xl border border-purple-500">
-                        <canvas
-                            ref={canvasRef}
-                            width={800}
-                            height={600}
-                            className="border border-purple-400 rounded-lg shadow-lg"
-                        />
-                    </div>
-                </div>
-
-                <div className="text-center">
-                    {!gameState.gameStarted && !gameState.gameOver && (
-                        <button
-                            onClick={startGame}
-                            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-12 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 shadow-lg"
-                        >
-                            🎮 {t.survivor.gameOver.restart}
-                        </button>
-                    )}
-
-                    {gameState.gameOver && gameState.showGameOver && (
-                        <div className="bg-black bg-opacity-80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl max-w-md mx-auto border border-purple-500">
-                            <h2 className="text-3xl font-bold text-white mb-6">{t.survivor.gameOver.title}</h2>
-                            <div className="space-y-3 mb-6">
-                                <p className="text-purple-300 text-lg">{t.survivor.gameOver.finalScore}: <span className="text-yellow-400 font-bold">{gameState.score}</span></p>
-                                <p className="text-purple-300 text-lg">{t.survivor.gameOver.survivalTime}: <span className="text-cyan-400 font-bold">{Math.floor(gameState.time / 60)}:{(gameState.time % 60).toString().padStart(2, '0')}</span></p>
-                            </div>
-
-                            {!gameState.showSubmitForm ? (
-                                <button
-                                    onClick={() => setGameState(prev => ({ ...prev, showSubmitForm: true }))}
-                                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 mr-3"
-                                >
-                                    📊 {t.survivor.gameOver.submitScore}
-                                </button>
-                            ) : (
-                                <div className="space-y-4">
-                                    <input
-                                        type="text"
-                                        value={gameState.playerName}
-                                        onChange={(e) => setGameState(prev => ({ ...prev, playerName: e.target.value }))}
-                                        placeholder={t.survivor.gameOver.enterName}
-                                        className="w-full px-4 py-3 border border-purple-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-black bg-opacity-50 text-white placeholder-gray-400"
-                                    />
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={submitScore}
-                                            className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105"
-                                        >
-                                            {t.common.submit}
-                                        </button>
-                                        <button
-                                            onClick={() => setGameState(prev => ({ ...prev, showSubmitForm: false }))}
-                                            className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105"
-                                        >
-                                            {t.common.cancel}
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-
-                            <button
-                                onClick={startGame}
-                                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 mt-4"
-                            >
-                                🔄 {t.survivor.gameOver.restart}
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                <div className="mt-8 bg-black bg-opacity-50 backdrop-blur-sm p-8 rounded-2xl shadow-2xl border border-purple-500">
-                    <h3 className="text-2xl font-bold text-white mb-6">{t.survivor.instructions.title}</h3>
-                    <div className="grid md:grid-cols-2 gap-8">
-                        <div>
-                            <h4 className="font-semibold text-purple-300 mb-3 text-lg">{t.survivor.instructions.controls}</h4>
-                            <ul className="text-gray-300 space-y-2">
-                                <li>• <span className="text-yellow-400">WASD</span> 或 <span className="text-yellow-400">方向键</span>：{t.survivor.controls}</li>
-                                <li>• <span className="text-green-400">自动攻击</span>：武器会自动攻击附近的敌人</li>
-                                <li>• <span className="text-red-400">躲避敌人</span>：不要让敌人碰到你</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-semibold text-purple-300 mb-3 text-lg">{t.survivor.instructions.weapons}</h4>
-                            <ul className="text-gray-300 space-y-2">
-                                <li>• <span className="text-orange-400">{t.survivor.weapons.whip}</span>：近距离扇形攻击</li>
-                                <li>• <span className="text-blue-400">{t.survivor.weapons.magicWand}</span>：直线魔法弹</li>
-                                <li>• <span className="text-red-400">{t.survivor.weapons.fireball}</span>：大范围爆炸攻击</li>
-                                <li>• <span className="text-yellow-400">{t.survivor.weapons.lightning}</span>：穿透攻击</li>
-                                <li>• <span className="text-cyan-400">{t.survivor.weapons.iceSpike}</span>：高伤害直线攻击</li>
-                                <li>• <span className="text-purple-400">每45秒武器自动升级</span></li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  // 生成升级选项
+  const generateLevelUpOptions = useCallback(() => {
+    const options: (Weapon | { type: 'stat', name: string, description: string })[] = []
+    
+    // 现有武器升级
+    weapons.forEach(weapon => {
+      if (weapon.level < 5) {
+        options.push({
+          ...weapon,
+          level: weapon.level + 1,
+          damage: Math.floor(weapon.damage * 1.3),
+          description: `${weapon.description} (等级 ${weapon.level + 1})`
+        })
+      }
+    })
+    
+    // 新武器
+    availableWeapons.forEach(weaponTemplate => {
+      if (!weapons.some(w => w.id === weaponTemplate.id)) {
+        options.push({
+          ...weaponTemplate,
+          level: 1,
+          lastFired: 0
+        })
+      }
+    })
+    
+    // 属性提升
+    options.push(
+      { type: 'stat', name: '生命值提升', description: '最大生命值+20，回复全部生命值' },
+      { type: 'stat', name: '移动速度提升', description: '移动速度+0.5' },
+      { type: 'stat', name: '经验值吸取范围', description: '增加经验值收集范围' }
     )
+    
+    // 随机选择3个选项
+    const shuffled = options.sort(() => 0.5 - Math.random())
+    setLevelUpOptions(shuffled.slice(0, 3))
+  }, [weapons, availableWeapons])
+
+  // 选择升级选项
+  const selectLevelUpOption = (option: any) => {
+    if ('type' in option && option.type === 'stat') {
+      switch (option.name) {
+        case '生命值提升':
+          setPlayer(prev => ({
+            ...prev,
+            maxHealth: prev.maxHealth + 20,
+            health: prev.maxHealth + 20
+          }))
+          break
+        case '移动速度提升':
+          setPlayer(prev => ({ ...prev, speed: prev.speed + 0.5 }))
+          break
+        case '经验值吸取范围':
+          // 这里可以增加经验值收集范围的逻辑
+          break
+      }
+    } else {
+      // 武器升级或新武器
+      const existingWeapon = weapons.find(w => w.id === option.id)
+      if (existingWeapon) {
+        // 升级现有武器
+        setWeapons(prev => prev.map(w => 
+          w.id === option.id ? { ...w, level: option.level, damage: option.damage } : w
+        ))
+      } else {
+        // 添加新武器
+        setWeapons(prev => [...prev, option])
+      }
+    }
+    
+    setGameState('playing')
+  }
+
+  // 开始游戏
+  const startGame = () => {
+    setGameState('playing')
+    setScore(0)
+    setTimeElapsed(0)
+    setWaveNumber(1)
+    setPlayer({
+      x: GAME_CONFIG.CANVAS_WIDTH / 2,
+      y: GAME_CONFIG.CANVAS_HEIGHT / 2,
+      level: 1,
+      experience: 0,
+      experienceToNext: GAME_CONFIG.LEVEL_UP_EXPERIENCE_BASE,
+      health: 100,
+      maxHealth: 100,
+      speed: GAME_CONFIG.PLAYER_SPEED
+    })
+    setEnemies([])
+    setProjectiles([])
+    setExperienceGems([])
+    setWeapons([{
+      id: 'magic_missile',
+      name: '魔法导弹',
+      level: 1,
+      damage: 25,
+      cooldown: GAME_CONFIG.WEAPON_COOLDOWNS.magic_missile,
+      lastFired: 0,
+      projectileSpeed: 8,
+      range: 300,
+      description: '自动追踪最近的敌人'
+    }])
+  }
+
+  // 游戏时间和敌人生成
+  useEffect(() => {
+    if (gameState === 'playing') {
+      const timer = setInterval(() => {
+        setTimeElapsed(prev => prev + 1)
+      }, 1000)
+      
+      const enemySpawner = setInterval(() => {
+        spawnEnemies()
+      }, 2000)
+      
+      return () => {
+        clearInterval(timer)
+        clearInterval(enemySpawner)
+      }
+    }
+  }, [gameState, spawnEnemies])
+
+  // 启动游戏循环
+  useEffect(() => {
+    if (gameState === 'playing') {
+      gameLoopRef.current = requestAnimationFrame(gameLoop)
+    } else {
+      if (gameLoopRef.current) {
+        cancelAnimationFrame(gameLoopRef.current)
+      }
+    }
+    
+    return () => {
+      if (gameLoopRef.current) {
+        cancelAnimationFrame(gameLoopRef.current)
+      }
+    }
+  }, [gameState, gameLoop])
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* 游戏标题 */}
+      <div className="text-center py-4">
+        <h1 className="text-4xl font-bold text-purple-400 mb-2">吸血鬼幸存者</h1>
+        <p className="text-gray-400">使用 WASD 或方向键移动，自动攻击敌人</p>
+      </div>
+
+      {/* 游戏菜单 */}
+      {gameState === 'menu' && (
+        <div className="flex flex-col items-center justify-center min-h-[400px]">
+          <div className="bg-gray-800 p-8 rounded-lg shadow-lg text-center">
+            <h2 className="text-2xl font-bold mb-4">开始游戏</h2>
+            <p className="text-gray-300 mb-6">
+              在这个类似吸血鬼幸存者的游戏中生存下去！<br/>
+              击败敌人获得经验值，升级你的武器和能力。
+            </p>
+            <button
+              onClick={startGame}
+              className="bg-purple-600 hover:bg-purple-700 px-8 py-3 rounded-lg font-bold text-lg transition-colors"
+            >
+              开始游戏
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 游戏暂停 */}
+      {gameState === 'paused' && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-8 rounded-lg shadow-lg text-center">
+            <h2 className="text-2xl font-bold mb-4">游戏暂停</h2>
+            <button
+              onClick={() => setGameState('playing')}
+              className="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg font-bold mr-4"
+            >
+              继续游戏
+            </button>
+            <button
+              onClick={() => setGameState('menu')}
+              className="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg font-bold"
+            >
+              返回菜单
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 升级选择 */}
+      {gameState === 'levelUp' && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-8 rounded-lg shadow-lg max-w-2xl">
+            <h2 className="text-3xl font-bold mb-6 text-center text-yellow-400">升级！</h2>
+            <p className="text-center mb-6">选择一个升级选项：</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {levelUpOptions.map((option, index) => (
+                <button
+                  key={index}
+                  onClick={() => selectLevelUpOption(option)}
+                  className="bg-gray-700 hover:bg-gray-600 p-4 rounded-lg transition-colors text-left"
+                >
+                  <h3 className="font-bold text-lg mb-2">
+                    {'type' in option ? option.name : option.name}
+                  </h3>
+                  <p className="text-gray-300 text-sm">
+                    {'type' in option ? option.description : option.description}
+                  </p>
+                  {'damage' in option && (
+                    <p className="text-purple-400 text-sm mt-2">
+                      伤害: {option.damage}
+                    </p>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 游戏结束 */}
+      {gameState === 'gameOver' && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-gray-800 p-8 rounded-lg shadow-lg text-center">
+            <h2 className="text-3xl font-bold mb-4 text-red-400">游戏结束</h2>
+            <p className="text-xl mb-2">最终得分: {score}</p>
+            <p className="text-lg mb-2">生存时间: {Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, '0')}</p>
+            <p className="text-lg mb-6">等级: {player.level}</p>
+            <button
+              onClick={startGame}
+              className="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg font-bold mr-4"
+            >
+              重新开始
+            </button>
+            <button
+              onClick={() => setGameState('menu')}
+              className="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg font-bold"
+            >
+              返回菜单
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 游戏画布和UI */}
+      {(gameState === 'playing' || gameState === 'paused') && (
+        <div className="flex flex-col items-center">
+          {/* 游戏信息栏 */}
+          <div className="bg-gray-800 p-4 rounded-lg mb-4 flex flex-wrap gap-6 text-sm">
+            <div>得分: <span className="text-yellow-400 font-bold">{score}</span></div>
+            <div>时间: <span className="text-blue-400 font-bold">{Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, '0')}</span></div>
+            <div>等级: <span className="text-purple-400 font-bold">{player.level}</span></div>
+            <div>生命值: <span className="text-red-400 font-bold">{player.health}/{player.maxHealth}</span></div>
+            <div>经验值: <span className="text-green-400 font-bold">{player.experience}/{player.experienceToNext}</span></div>
+            <div>敌人数量: <span className="text-orange-400 font-bold">{enemies.length}</span></div>
+          </div>
+
+          {/* 经验值进度条 */}
+          <div className="w-full max-w-4xl bg-gray-700 rounded-full h-3 mb-4">
+            <div 
+              className="bg-green-500 h-3 rounded-full transition-all duration-300"
+              style={{ width: `${(player.experience / player.experienceToNext) * 100}%` }}
+            ></div>
+          </div>
+
+          {/* 游戏画布 */}
+          <canvas
+            ref={canvasRef}
+            width={GAME_CONFIG.CANVAS_WIDTH}
+            height={GAME_CONFIG.CANVAS_HEIGHT}
+            className="border-2 border-gray-600 rounded-lg bg-gray-900"
+          />
+
+          {/* 武器信息 */}
+          <div className="mt-4 bg-gray-800 p-4 rounded-lg">
+            <h3 className="text-lg font-bold mb-2">当前武器:</h3>
+            <div className="flex flex-wrap gap-4">
+              {weapons.map(weapon => (
+                <div key={weapon.id} className="bg-gray-700 p-2 rounded text-sm">
+                  <div className="font-bold">{weapon.name} (Lv.{weapon.level})</div>
+                  <div className="text-gray-300">伤害: {weapon.damage}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 控制说明 */}
+          <div className="mt-4 text-center text-gray-400 text-sm">
+            <p>WASD 或方向键移动 | ESC 暂停游戏</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
 } 
