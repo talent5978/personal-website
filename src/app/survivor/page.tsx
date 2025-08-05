@@ -13,11 +13,16 @@ const GAME_CONFIG = {
   LEVEL_UP_EXPERIENCE_BASE: 100,
   INVULNERABLE_TIME: 1000, // 无敌时间：1秒
   WEAPON_COOLDOWNS: {
-    magic_missile: 600,  // 降低冷却时间，提高攻击频率
+    magic_missile: 600,
     fireball: 1000,
     lightning: 500,
     ice_shard: 800,
-    holy_water: 1500
+    holy_water: 1500,
+    wind_blade: 400,
+    poison_dart: 700,
+    laser_beam: 300,
+    meteor: 2500,
+    chain_lightning: 1200
   }
 }
 
@@ -87,6 +92,19 @@ interface DamageText {
   createdAt: number
 }
 
+interface Particle {
+  id: number
+  x: number
+  y: number
+  vx: number
+  vy: number
+  size: number
+  color: string
+  life: number
+  maxLife: number
+  type: 'hit' | 'death' | 'explosion'
+}
+
 export default function VampireSurvivorGame() {
   const { t } = useLanguage()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -98,6 +116,8 @@ export default function VampireSurvivorGame() {
   const [score, setScore] = useState(0)
   const [timeElapsed, setTimeElapsed] = useState(0)
   const [waveNumber, setWaveNumber] = useState(1)
+  const [playerName, setPlayerName] = useState('')
+  const [showSubmitForm, setShowSubmitForm] = useState(false)
   
   // 游戏对象
   const [player, setPlayer] = useState<Player>({
@@ -116,6 +136,7 @@ export default function VampireSurvivorGame() {
   const [projectiles, setProjectiles] = useState<Projectile[]>([])
   const [experienceGems, setExperienceGems] = useState<ExperienceGem[]>([])
   const [damageTexts, setDamageTexts] = useState<DamageText[]>([])
+  const [particles, setParticles] = useState<Particle[]>([])
   const [weapons, setWeapons] = useState<Weapon[]>([
     {
       id: 'magic_missile',
@@ -166,6 +187,51 @@ export default function VampireSurvivorGame() {
       projectileSpeed: 5,
       range: 200,
       description: '对不死生物造成额外伤害'
+    },
+    {
+      id: 'wind_blade',
+      name: '风刃',
+      damage: 20,
+      cooldown: GAME_CONFIG.WEAPON_COOLDOWNS.wind_blade,
+      projectileSpeed: 10,
+      range: 300,
+      description: '快速的风属性攻击'
+    },
+    {
+      id: 'poison_dart',
+      name: '毒镖',
+      damage: 25,
+      cooldown: GAME_CONFIG.WEAPON_COOLDOWNS.poison_dart,
+      projectileSpeed: 8,
+      range: 320,
+      description: '造成持续毒素伤害'
+    },
+    {
+      id: 'laser_beam',
+      name: '激光束',
+      damage: 15,
+      cooldown: GAME_CONFIG.WEAPON_COOLDOWNS.laser_beam,
+      projectileSpeed: 15,
+      range: 450,
+      description: '高频率的能量攻击'
+    },
+    {
+      id: 'meteor',
+      name: '陨石术',
+      damage: 120,
+      cooldown: GAME_CONFIG.WEAPON_COOLDOWNS.meteor,
+      projectileSpeed: 4,
+      range: 180,
+      description: '超高伤害的天降陨石'
+    },
+    {
+      id: 'chain_lightning',
+      name: '连锁闪电',
+      damage: 50,
+      cooldown: GAME_CONFIG.WEAPON_COOLDOWNS.chain_lightning,
+      projectileSpeed: 20,
+      range: 350,
+      description: '可以跳跃到多个敌人'
     }
   ])
   
@@ -273,6 +339,23 @@ export default function VampireSurvivorGame() {
         if (minDistance <= weapon.range) {
           const angle = Math.atan2(nearestEnemy.y - player.y, nearestEnemy.x - player.x)
           
+          // 根据武器类型设置投射物属性
+          let projectileSize = 8
+          let projectileColor = '#9333ea'
+          
+          switch (weapon.id) {
+            case 'magic_missile': projectileSize = 8; projectileColor = '#9333ea'; break
+            case 'fireball': projectileSize = 12; projectileColor = '#f97316'; break
+            case 'lightning': projectileSize = 6; projectileColor = '#eab308'; break
+            case 'ice_shard': projectileSize = 10; projectileColor = '#06b6d4'; break
+            case 'holy_water': projectileSize = 15; projectileColor = '#10b981'; break
+            case 'wind_blade': projectileSize = 7; projectileColor = '#22d3ee'; break
+            case 'poison_dart': projectileSize = 5; projectileColor = '#84cc16'; break
+            case 'laser_beam': projectileSize = 4; projectileColor = '#f43f5e'; break
+            case 'meteor': projectileSize = 18; projectileColor = '#f59e0b'; break
+            case 'chain_lightning': projectileSize = 8; projectileColor = '#a855f7'; break
+          }
+          
           const projectile: Projectile = {
             id: Date.now() + Math.random(),
             x: player.x,
@@ -281,11 +364,8 @@ export default function VampireSurvivorGame() {
             vy: Math.sin(angle) * weapon.projectileSpeed,
             damage: weapon.damage,
             weaponId: weapon.id,
-            size: weapon.id === 'fireball' ? 12 : weapon.id === 'holy_water' ? 15 : 8,
-            color: weapon.id === 'magic_missile' ? '#9333ea' : 
-                   weapon.id === 'fireball' ? '#f97316' :
-                   weapon.id === 'lightning' ? '#eab308' :
-                   weapon.id === 'ice_shard' ? '#06b6d4' : '#10b981'
+            size: projectileSize,
+            color: projectileColor
           }
           
           setProjectiles(prev => [...prev, projectile])
@@ -427,6 +507,27 @@ export default function VampireSurvivorGame() {
         )
         
         if (distance < projectile.size + 15) {
+          // 生成打击粒子效果
+          const particleCount = Math.min(8, Math.floor(projectile.damage / 10) + 3)
+          const newParticles: Particle[] = []
+          
+          for (let i = 0; i < particleCount; i++) {
+            newParticles.push({
+              id: Date.now() + Math.random(),
+              x: enemy.x + (Math.random() - 0.5) * 20,
+              y: enemy.y + (Math.random() - 0.5) * 20,
+              vx: (Math.random() - 0.5) * 4,
+              vy: (Math.random() - 0.5) * 4,
+              size: Math.random() * 4 + 2,
+              color: projectile.color,
+              life: 0,
+              maxLife: 30 + Math.random() * 20,
+              type: 'hit'
+            })
+          }
+          
+          setParticles(prev => [...prev, ...newParticles])
+          
           // 造成伤害
           setEnemies(prev => prev.map(e => 
             e.id === enemy.id ? { ...e, health: e.health - projectile.damage } : e
@@ -442,6 +543,27 @@ export default function VampireSurvivorGame() {
     setEnemies(prev => {
       const aliveenemies = prev.filter(enemy => {
         if (enemy.health <= 0) {
+          // 生成死亡粒子效果
+          const deathParticles: Particle[] = []
+          for (let i = 0; i < 12; i++) {
+            const angle = (i / 12) * Math.PI * 2
+            deathParticles.push({
+              id: Date.now() + Math.random(),
+              x: enemy.x,
+              y: enemy.y,
+              vx: Math.cos(angle) * (2 + Math.random() * 3),
+              vy: Math.sin(angle) * (2 + Math.random() * 3),
+              size: Math.random() * 6 + 3,
+              color: enemy.type === 'zombie' ? '#ef4444' : 
+                     enemy.type === 'skeleton' ? '#f3f4f6' :
+                     enemy.type === 'bat' ? '#7c3aed' : '#6b7280',
+              life: 0,
+              maxLife: 40 + Math.random() * 30,
+              type: 'death'
+            })
+          }
+          setParticles(prev => [...prev, ...deathParticles])
+          
           // 生成经验宝石
           setExperienceGems(prevGems => [...prevGems, {
             id: Date.now() + Math.random(),
@@ -542,6 +664,29 @@ export default function VampireSurvivorGame() {
       })
     }
     
+    // 更新和绘制粒子效果
+    setParticles(prev => prev.map(particle => {
+      particle.life++
+      particle.x += particle.vx
+      particle.y += particle.vy
+      particle.vx *= 0.98 // 阻力
+      particle.vy *= 0.98
+      
+      const alpha = 1 - (particle.life / particle.maxLife)
+      
+      if (alpha > 0) {
+        ctx.save()
+        ctx.globalAlpha = alpha
+        ctx.fillStyle = particle.color
+        ctx.beginPath()
+        ctx.arc(particle.x, particle.y, particle.size * alpha, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
+      }
+      
+      return particle
+    }).filter(particle => particle.life < particle.maxLife))
+    
     // 更新和绘制伤害数字
     setDamageTexts(prev => prev.map(text => {
       const age = currentTime - text.createdAt
@@ -560,7 +705,7 @@ export default function VampireSurvivorGame() {
     }).filter(text => text.opacity > 0))
     
     gameLoopRef.current = requestAnimationFrame(gameLoop)
-  }, [gameState, player, enemies, projectiles, experienceGems, damageTexts, fireWeapons])
+  }, [gameState, player, enemies, projectiles, experienceGems, damageTexts, particles, fireWeapons])
 
   // 生成升级选项
   const generateLevelUpOptions = useCallback(() => {
@@ -636,6 +781,39 @@ export default function VampireSurvivorGame() {
     setGameState('playing')
   }
 
+  // 提交分数
+  const submitScore = async () => {
+    if (!playerName.trim()) {
+      alert('请输入你的名字')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/scores', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          playerName: playerName,
+          score: score,
+          gameType: 'vampire_survivor'
+        }),
+      })
+
+      if (response.ok) {
+        alert('分数提交成功！')
+        setShowSubmitForm(false)
+        setPlayerName('')
+      } else {
+        alert('分数提交失败，请重试')
+      }
+    } catch (error) {
+      console.error('提交分数失败:', error)
+      alert('分数提交失败，请重试')
+    }
+  }
+
   // 开始游戏
   const startGame = () => {
     setGameState('playing')
@@ -657,6 +835,9 @@ export default function VampireSurvivorGame() {
     setProjectiles([])
     setExperienceGems([])
     setDamageTexts([])
+    setParticles([])
+    setShowSubmitForm(false)
+    setPlayerName('')
     setWeapons([{
       id: 'magic_missile',
       name: '魔法导弹',
@@ -790,23 +971,77 @@ export default function VampireSurvivorGame() {
       {/* 游戏结束 */}
       {gameState === 'gameOver' && (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-8 rounded-lg shadow-lg text-center">
+          <div className="bg-gray-800 p-8 rounded-lg shadow-lg text-center max-w-md">
             <h2 className="text-3xl font-bold mb-4 text-red-400">游戏结束</h2>
-            <p className="text-xl mb-2">最终得分: {score}</p>
-            <p className="text-lg mb-2">生存时间: {Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, '0')}</p>
-            <p className="text-lg mb-6">等级: {player.level}</p>
-            <button
-              onClick={startGame}
-              className="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg font-bold mr-4"
-            >
-              重新开始
-            </button>
-            <button
-              onClick={() => setGameState('menu')}
-              className="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg font-bold"
-            >
-              返回菜单
-            </button>
+            <div className="mb-6 space-y-2">
+              <p className="text-xl">最终得分: <span className="text-yellow-400 font-bold">{score}</span></p>
+              <p className="text-lg">生存时间: <span className="text-blue-400 font-bold">{Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, '0')}</span></p>
+              <p className="text-lg">等级: <span className="text-purple-400 font-bold">{player.level}</span></p>
+            </div>
+            
+            {!showSubmitForm ? (
+              <div className="space-y-3">
+                <button
+                  onClick={() => setShowSubmitForm(true)}
+                  className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-bold w-full"
+                >
+                  📊 提交分数
+                </button>
+                <div className="flex gap-3">
+                  <button
+                    onClick={startGame}
+                    className="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg font-bold flex-1"
+                  >
+                    重新开始
+                  </button>
+                  <button
+                    onClick={() => setGameState('menu')}
+                    className="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg font-bold flex-1"
+                  >
+                    返回菜单
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={playerName}
+                  onChange={(e) => setPlayerName(e.target.value)}
+                  placeholder="输入你的名字"
+                  className="w-full px-4 py-3 border border-purple-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-700 text-white placeholder-gray-400"
+                  maxLength={20}
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={submitScore}
+                    className="bg-green-600 hover:bg-green-700 px-6 py-2 rounded-lg font-bold flex-1"
+                  >
+                    提交
+                  </button>
+                  <button
+                    onClick={() => setShowSubmitForm(false)}
+                    className="bg-gray-600 hover:bg-gray-700 px-6 py-2 rounded-lg font-bold flex-1"
+                  >
+                    取消
+                  </button>
+                </div>
+                <div className="flex gap-3 mt-2">
+                  <button
+                    onClick={startGame}
+                    className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg font-bold text-sm flex-1"
+                  >
+                    重新开始
+                  </button>
+                  <button
+                    onClick={() => setGameState('menu')}
+                    className="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg font-bold text-sm flex-1"
+                  >
+                    返回菜单
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
