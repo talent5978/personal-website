@@ -598,7 +598,7 @@ export default function SurvivorGame() {
                     <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                         ⚔️ 幸存者游戏
                     </h1>
-                    
+
                     <p className="text-gray-300 mb-6 text-lg">
                         使用 WASD 或方向键移动，自动攻击敌人，生存越久分数越高！
                     </p>

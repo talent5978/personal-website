@@ -16,11 +16,15 @@ interface Post {
 
 export default function Posts() {
   const [posts, setPosts] = useState<Post[]>([])
+  const [filteredPosts, setFilteredPosts] = useState<Post[]>([])
   const [showForm, setShowForm] = useState(false)
   const [title, setTitle] = useState('')
   const [content, setContent] = useState('')
   const [author, setAuthor] = useState('')
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [postsPerPage] = useState(5)
 
   // 获取帖子列表
   const fetchPosts = async () => {
@@ -29,6 +33,7 @@ export default function Posts() {
       if (response.ok) {
         const data = await response.json()
         setPosts(data)
+        setFilteredPosts(data)
       }
     } catch (error) {
       console.error('获取帖子失败:', error)
@@ -36,6 +41,23 @@ export default function Posts() {
       setLoading(false)
     }
   }
+
+  // 搜索功能
+  useEffect(() => {
+    const filtered = posts.filter(post =>
+      post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      post.content.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      post.author.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    setFilteredPosts(filtered)
+    setCurrentPage(1)
+  }, [searchTerm, posts])
+
+  // 分页功能
+  const indexOfLastPost = currentPage * postsPerPage
+  const indexOfFirstPost = indexOfLastPost - postsPerPage
+  const currentPosts = filteredPosts.slice(indexOfFirstPost, indexOfLastPost)
+  const totalPages = Math.ceil(filteredPosts.length / postsPerPage)
 
   // 提交新帖子
   const handleSubmit = async (e: React.FormEvent) => {
@@ -84,6 +106,22 @@ export default function Posts() {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-4 bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">💬 社区论坛</h1>
           <p className="text-blue-200">分享你的想法，与大家交流</p>
+        </div>
+
+        {/* 搜索框 */}
+        <div className="mb-6">
+          <div className="relative max-w-md mx-auto">
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-4 py-3 pl-12 border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black bg-opacity-50 text-white placeholder-gray-400"
+              placeholder="搜索帖子标题、内容或作者..."
+            />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <span className="text-gray-400">🔍</span>
+            </div>
+          </div>
         </div>
 
         {/* 发帖按钮 */}
@@ -146,18 +184,28 @@ export default function Posts() {
           </div>
         )}
 
+        {/* 统计信息 */}
+        <div className="mb-6 text-center">
+          <p className="text-blue-200">
+            共找到 {filteredPosts.length} 个帖子
+            {searchTerm && ` (搜索: "${searchTerm}")`}
+          </p>
+        </div>
+
         {/* 帖子列表 */}
         <div className="space-y-6">
           {loading ? (
             <div className="text-center py-8">
               <div className="text-blue-200">加载中...</div>
             </div>
-          ) : posts.length === 0 ? (
+          ) : currentPosts.length === 0 ? (
             <div className="text-center py-8">
-              <div className="text-blue-200">暂无帖子，快来发布第一个帖子吧！</div>
+              <div className="text-blue-200">
+                {searchTerm ? '没有找到匹配的帖子' : '暂无帖子，快来发布第一个帖子吧！'}
+              </div>
             </div>
           ) : (
-            posts.map((post) => (
+            currentPosts.map((post) => (
               <div key={post.id} className="bg-black bg-opacity-70 border border-blue-500 p-8 rounded-2xl shadow-xl hover:shadow-2xl transition-all">
                 <div className="flex justify-between items-start mb-4">
                   <div>
@@ -192,6 +240,31 @@ export default function Posts() {
             ))
           )}
         </div>
+
+        {/* 分页控件 */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center space-x-2 mt-8">
+            <button
+              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+            >
+              上一页
+            </button>
+
+            <span className="text-blue-200 px-4">
+              第 {currentPage} 页，共 {totalPages} 页
+            </span>
+
+            <button
+              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors"
+            >
+              下一页
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
