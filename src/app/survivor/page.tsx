@@ -183,8 +183,8 @@ export default function VampireSurvivorGame() {
   // 生成敌人
   const spawnEnemies = useCallback(() => {
     const enemyTypes: Enemy['type'][] = ['zombie', 'skeleton', 'bat', 'ghost']
-    // 确保游戏开始时至少有3个敌人，随时间增加
-    const enemiesPerWave = Math.max(3, Math.min(5 + Math.floor(timeElapsed / 30), 20))
+    // 调整敌人生成数量，降低初期难度
+    const enemiesPerWave = Math.max(2, Math.min(3 + Math.floor(timeElapsed / 45), 15))
     
     for (let i = 0; i < enemiesPerWave; i++) {
       const side = Math.floor(Math.random() * 4)
@@ -209,7 +209,8 @@ export default function VampireSurvivorGame() {
       }
       
       const type = enemyTypes[Math.floor(Math.random() * enemyTypes.length)]
-      const baseHealth = 50 + Math.floor(timeElapsed / 10) * 10
+      // 降低初期敌人血量，让游戏更容易上手
+      const baseHealth = 30 + Math.floor(timeElapsed / 15) * 8
       
       const enemy: Enemy = {
         id: Date.now() + Math.random(),
@@ -218,9 +219,9 @@ export default function VampireSurvivorGame() {
         type,
         health: baseHealth,
         maxHealth: baseHealth,
-        speed: GAME_CONFIG.ENEMY_BASE_SPEED + Math.random() * 0.5,
-        damage: 10 + Math.floor(timeElapsed / 20) * 5,
-        experienceValue: 10 + Math.floor(timeElapsed / 15) * 2
+        speed: GAME_CONFIG.ENEMY_BASE_SPEED + Math.random() * 0.3, // 降低速度随机性
+        damage: 8 + Math.floor(timeElapsed / 25) * 4, // 降低初期伤害
+        experienceValue: 12 + Math.floor(timeElapsed / 20) * 3 // 增加经验值奖励
       }
       
       setEnemies(prev => [...prev, enemy])
@@ -607,7 +608,7 @@ export default function VampireSurvivorGame() {
       
       const enemySpawner = setInterval(() => {
         spawnEnemies()
-      }, 1500) // 缩短生成间隔到1.5秒
+      }, 3000) // 调整生成间隔到3秒，降低初期难度
       
       return () => {
         clearInterval(timer)
@@ -736,26 +737,52 @@ export default function VampireSurvivorGame() {
         </div>
       )}
 
-      {/* 游戏画布和UI */}
+      {/* 固定的UI界面 */}
       {(gameState === 'playing' || gameState === 'paused') && (
-        <div className="flex flex-col items-center">
-          {/* 游戏信息栏 */}
-          <div className="bg-gray-800 p-4 rounded-lg mb-4 flex flex-wrap gap-6 text-sm">
-            <div>得分: <span className="text-yellow-400 font-bold">{score}</span></div>
-            <div>时间: <span className="text-blue-400 font-bold">{Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, '0')}</span></div>
-            <div>等级: <span className="text-purple-400 font-bold">{player.level}</span></div>
-            <div>生命值: <span className="text-red-400 font-bold">{player.health}/{player.maxHealth}</span></div>
-            <div>经验值: <span className="text-green-400 font-bold">{player.experience}/{player.experienceToNext}</span></div>
-            <div>敌人数量: <span className="text-orange-400 font-bold">{enemies.length}</span></div>
+        <>
+          {/* 固定在顶部的UI栏 */}
+          <div className="fixed top-0 left-0 right-0 z-40 bg-gray-900 bg-opacity-95 backdrop-blur-sm border-b border-gray-700">
+            {/* 游戏信息栏 */}
+            <div className="flex justify-center py-2">
+              <div className="flex flex-wrap gap-6 text-sm">
+                <div>得分: <span className="text-yellow-400 font-bold">{score}</span></div>
+                <div>时间: <span className="text-blue-400 font-bold">{Math.floor(timeElapsed / 60)}:{(timeElapsed % 60).toString().padStart(2, '0')}</span></div>
+                <div>等级: <span className="text-purple-400 font-bold">{player.level}</span></div>
+                <div>敌人数量: <span className="text-orange-400 font-bold">{enemies.length}</span></div>
+              </div>
+            </div>
+
+            {/* 生命值条 */}
+            <div className="px-4 pb-2">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-red-400 text-sm font-semibold">❤️ 生命值</span>
+                <span className="text-red-400 text-sm">{player.health}/{player.maxHealth}</span>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-4 border border-gray-600">
+                <div 
+                  className="bg-gradient-to-r from-red-600 to-red-400 h-4 rounded-full transition-all duration-300 shadow-lg"
+                  style={{ width: `${(player.health / player.maxHealth) * 100}%` }}
+                ></div>
+              </div>
+            </div>
+
+            {/* 经验值条 */}
+            <div className="px-4 pb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-green-400 text-sm font-semibold">⭐ 经验值</span>
+                <span className="text-green-400 text-sm">{player.experience}/{player.experienceToNext}</span>
+              </div>
+              <div className="w-full bg-gray-700 rounded-full h-4 border border-gray-600">
+                <div 
+                  className="bg-gradient-to-r from-green-600 to-green-400 h-4 rounded-full transition-all duration-300 shadow-lg"
+                  style={{ width: `${(player.experience / player.experienceToNext) * 100}%` }}
+                ></div>
+              </div>
+            </div>
           </div>
 
-          {/* 经验值进度条 */}
-          <div className="w-full max-w-4xl bg-gray-700 rounded-full h-3 mb-4">
-            <div 
-              className="bg-green-500 h-3 rounded-full transition-all duration-300"
-              style={{ width: `${(player.experience / player.experienceToNext) * 100}%` }}
-            ></div>
-          </div>
+          {/* 游戏内容区域 */}
+          <div className="flex flex-col items-center pt-32">
 
           {/* 游戏画布 */}
           <canvas
@@ -782,7 +809,8 @@ export default function VampireSurvivorGame() {
           <div className="mt-4 text-center text-gray-400 text-sm">
             <p>WASD 或方向键移动 | ESC 暂停游戏</p>
           </div>
-        </div>
+          </div>
+        </>
       )}
     </div>
   )
