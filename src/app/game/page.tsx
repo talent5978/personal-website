@@ -75,11 +75,11 @@ export default function Game() {
             const specialFood = generateRandomPosition(excludePositions)
             const types: ('speed' | 'double' | 'shield')[] = ['speed', 'double', 'shield']
             const specialFoodType = types[Math.floor(Math.random() * types.length)]
-            
-            setGameState(prev => ({ 
-                ...prev, 
-                specialFood, 
-                specialFoodType 
+
+            setGameState(prev => ({
+                ...prev,
+                specialFood,
+                specialFoodType
             }))
         }
     }, [gameState.snake, gameState.obstacles, gameState.food, generateRandomPosition])
@@ -89,13 +89,13 @@ export default function Game() {
         if (gameState.gameMode === 'obstacle') {
             const newObstacles: Position[] = []
             const obstacleCount = Math.min(gameState.level + 2, 8)
-            
+
             for (let i = 0; i < obstacleCount; i++) {
                 const excludePositions = [...gameState.snake, gameState.food, ...newObstacles]
                 const obstacle = generateRandomPosition(excludePositions)
                 newObstacles.push(obstacle)
             }
-            
+
             setGameState(prev => ({ ...prev, obstacles: newObstacles }))
         }
     }, [gameState.gameMode, gameState.level, gameState.snake, gameState.food, generateRandomPosition])
@@ -165,7 +165,7 @@ export default function Game() {
             newScore += baseScore
             generateFood()
             generateSpecialFood()
-            
+
             // 升级检查
             if (newScore >= gameState.level * 50) {
                 newLevel = gameState.level + 1
@@ -176,7 +176,7 @@ export default function Game() {
             newScore += 30
             powerUpActive = true
             powerUpTimer = 50 // 50帧的持续时间
-            
+
             switch (gameState.specialFoodType) {
                 case 'speed':
                     newSpeed = Math.max(30, gameState.speed - 20)
@@ -188,7 +188,7 @@ export default function Game() {
                     // 护盾效果在碰撞检测中处理
                     break
             }
-            
+
             specialFood = null
             specialFoodType = null
         } else {
@@ -329,8 +329,8 @@ export default function Game() {
 
     // 切换游戏模式
     const changeGameMode = (mode: 'classic' | 'obstacle' | 'speed') => {
-        setGameState(prev => ({ 
-            ...prev, 
+        setGameState(prev => ({
+            ...prev,
             gameMode: mode,
             obstacles: mode === 'obstacle' ? [] : prev.obstacles,
             speed: mode === 'speed' ? 100 : 150
@@ -344,7 +344,7 @@ export default function Game() {
                     <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
                         🐍 贪吃蛇游戏
                     </h1>
-                    
+
                     {/* 游戏模式选择 */}
                     {!gameState.gameStarted && !gameState.gameOver && (
                         <div className="mb-6">
@@ -352,31 +352,28 @@ export default function Game() {
                             <div className="flex justify-center space-x-4">
                                 <button
                                     onClick={() => changeGameMode('classic')}
-                                    className={`px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${
-                                        gameState.gameMode === 'classic'
+                                    className={`px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${gameState.gameMode === 'classic'
                                             ? 'bg-green-600 text-white shadow-lg'
                                             : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                                    }`}
+                                        }`}
                                 >
                                     🎮 经典模式
                                 </button>
                                 <button
                                     onClick={() => changeGameMode('obstacle')}
-                                    className={`px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${
-                                        gameState.gameMode === 'obstacle'
+                                    className={`px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${gameState.gameMode === 'obstacle'
                                             ? 'bg-red-600 text-white shadow-lg'
                                             : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                                    }`}
+                                        }`}
                                 >
                                     ⚠️ 障碍模式
                                 </button>
                                 <button
                                     onClick={() => changeGameMode('speed')}
-                                    className={`px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${
-                                        gameState.gameMode === 'speed'
+                                    className={`px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 ${gameState.gameMode === 'speed'
                                             ? 'bg-blue-600 text-white shadow-lg'
                                             : 'bg-gray-600 text-gray-300 hover:bg-gray-500'
-                                    }`}
+                                        }`}
                                 >
                                     ⚡ 极速模式
                                 </button>
@@ -413,11 +410,10 @@ export default function Game() {
                         {gameState.snake.map((segment, index) => (
                             <div
                                 key={index}
-                                className={`absolute rounded-sm ${
-                                    index === 0 
-                                        ? 'bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg' 
+                                className={`absolute rounded-sm ${index === 0
+                                        ? 'bg-gradient-to-r from-green-400 to-emerald-500 shadow-lg'
                                         : 'bg-gradient-to-r from-green-500 to-green-600'
-                                }`}
+                                    }`}
                                 style={{
                                     left: segment.x * cellSize,
                                     top: segment.y * cellSize,
@@ -426,7 +422,7 @@ export default function Game() {
                                 }}
                             />
                         ))}
-                        
+
                         {/* 食物 */}
                         <div
                             className="absolute bg-gradient-to-r from-red-400 to-pink-500 rounded-full shadow-lg animate-pulse"
@@ -437,15 +433,14 @@ export default function Game() {
                                 height: cellSize,
                             }}
                         />
-                        
+
                         {/* 特殊食物 */}
                         {gameState.specialFood && (
                             <div
-                                className={`absolute rounded-full shadow-lg animate-bounce ${
-                                    gameState.specialFoodType === 'speed' ? 'bg-gradient-to-r from-blue-400 to-cyan-500' :
-                                    gameState.specialFoodType === 'double' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
-                                    'bg-gradient-to-r from-purple-400 to-pink-500'
-                                }`}
+                                className={`absolute rounded-full shadow-lg animate-bounce ${gameState.specialFoodType === 'speed' ? 'bg-gradient-to-r from-blue-400 to-cyan-500' :
+                                        gameState.specialFoodType === 'double' ? 'bg-gradient-to-r from-yellow-400 to-orange-500' :
+                                            'bg-gradient-to-r from-purple-400 to-pink-500'
+                                    }`}
                                 style={{
                                     left: gameState.specialFood.x * cellSize,
                                     top: gameState.specialFood.y * cellSize,
@@ -454,7 +449,7 @@ export default function Game() {
                                 }}
                             />
                         )}
-                        
+
                         {/* 障碍物 */}
                         {gameState.obstacles.map((obstacle, index) => (
                             <div
@@ -510,7 +505,7 @@ export default function Game() {
                                 <p className="text-green-300 text-lg">📏 蛇的长度: <span className="text-green-400 font-bold">{gameState.snake.length}</span></p>
                                 <p className="text-green-300 text-lg">🏆 达到等级: <span className="text-blue-400 font-bold">{gameState.level}</span></p>
                             </div>
-                            
+
                             <button
                                 onClick={resetGame}
                                 className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105"

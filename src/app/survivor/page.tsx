@@ -95,6 +95,13 @@ const WEAPONS = {
     }
 }
 
+const SPEED_PRESETS = [
+    { label: '慢速', value: 1.5 },
+    { label: '标准', value: 1 },
+    { label: '快速', value: 0.7 },
+    { label: '极限', value: 0.5 }
+]
+
 export default function SurvivorGame() {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const [gameState, setGameState] = useState<GameState>({
@@ -123,6 +130,7 @@ export default function SurvivorGame() {
         playerName: '',
         showSubmitForm: false
     })
+    const [speedFactor, setSpeedFactor] = useState(1)
 
     const [keys, setKeys] = useState<Set<string>>(new Set())
     const animationRef = useRef<number>()
@@ -353,8 +361,8 @@ export default function SurvivorGame() {
                 const distance = Math.sqrt(dx * dx + dy * dy)
 
                 if (distance > 0) {
-                    enemy.x += (dx / distance) * enemy.speed
-                    enemy.y += (dy / distance) * enemy.speed
+                    enemy.x += (dx / distance) * enemy.speed * speedFactor
+                    enemy.y += (dy / distance) * enemy.speed * speedFactor
                 }
 
                 return enemy
@@ -443,7 +451,7 @@ export default function SurvivorGame() {
         })
 
         animationRef.current = requestAnimationFrame(gameLoop)
-    }, [gameState.gameStarted, gameState.gameOver, keys, fireWeapon, spawnEnemy])
+    }, [gameState.gameStarted, gameState.gameOver, keys, fireWeapon, spawnEnemy, speedFactor])
 
     // 游戏循环
     useEffect(() => {

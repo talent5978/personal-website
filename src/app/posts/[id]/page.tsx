@@ -121,92 +121,84 @@ export default function PostDetail() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 py-8">
+      <div className="max-w-5xl mx-auto px-4">
         {/* 返回按钮 */}
         <div className="mb-6">
           <Link
             href="/posts"
-            className="text-blue-500 hover:text-blue-600 flex items-center"
+            className="text-blue-400 hover:text-blue-200 flex items-center text-lg font-bold"
           >
             ← 返回帖子列表
           </Link>
         </div>
 
         {/* 帖子内容 */}
-        <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-4">{post.title}</h1>
-          <div className="text-gray-600 text-sm mb-4">
+        <div className="bg-black bg-opacity-80 border border-blue-500 p-8 rounded-2xl shadow-2xl mb-8">
+          <h1 className="text-3xl font-bold text-white mb-4">{post.title}</h1>
+          <div className="text-blue-200 text-sm mb-4">
             作者: {post.author} | 发布时间: {formatDate(post.createdAt)}
             {post.updatedAt !== post.createdAt && (
               <span> | 更新时间: {formatDate(post.updatedAt)}</span>
             )}
           </div>
-          <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+          <div className="text-blue-100 whitespace-pre-wrap leading-relaxed">
             {post.content}
           </div>
         </div>
 
         {/* 留言区域 */}
-        <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">
-            留言 ({comments.length})
+        <div className="bg-black bg-opacity-70 border border-blue-500 p-8 rounded-2xl shadow-2xl mb-8">
+          <h2 className="text-2xl font-bold text-white mb-6">
+            留言 <span className="text-blue-300">({comments.length})</span>
           </h2>
 
           {/* 留言表单 */}
-          <form onSubmit={handleSubmitComment} className="mb-6 p-4 bg-gray-50 rounded-lg">
+          <form onSubmit={handleSubmitComment} className="mb-8 p-6 bg-black bg-opacity-40 rounded-xl border border-blue-400">
             <div className="grid md:grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  昵称
-                </label>
-                <input
-                  type="text"
-                  value={commentAuthor}
-                  onChange={(e) => setCommentAuthor(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="请输入你的昵称"
-                  required
-                />
-              </div>
+              <input
+                type="text"
+                value={commentAuthor}
+                onChange={(e) => setCommentAuthor(e.target.value)}
+                className="w-full px-4 py-3 border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black bg-opacity-50 text-white placeholder-gray-400"
+                placeholder="请输入你的昵称"
+                required
+              />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                留言内容
-              </label>
               <textarea
                 value={commentContent}
                 onChange={(e) => setCommentContent(e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 border border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-black bg-opacity-50 text-white placeholder-gray-400"
                 placeholder="请输入你的留言"
                 required
               />
             </div>
             <button
               type="submit"
-              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg transition-colors"
+              className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105"
             >
               发表留言
             </button>
           </form>
 
           {/* 留言列表 */}
-          <div className="space-y-4">
+          <div className="space-y-6">
             {comments.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-blue-200">
                 暂无留言，快来发表第一条留言吧！
               </div>
             ) : (
               comments.map((comment) => (
-                <div key={comment.id} className="border-b border-gray-200 pb-4 last:border-b-0">
+                <div key={comment.id} className="border-b border-blue-800 pb-4 last:border-b-0">
                   <div className="flex justify-between items-start mb-2">
-                    <div className="font-medium text-gray-800">{comment.author}</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="font-medium text-blue-100">{comment.author}</div>
+                    <div className="text-sm text-blue-300">
                       {formatDate(comment.createdAt)}
                     </div>
                   </div>
-                  <div className="text-gray-700 whitespace-pre-wrap">
+                  <div className="text-blue-200 whitespace-pre-wrap">
                     {comment.content}
                   </div>
                 </div>
