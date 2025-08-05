@@ -7,17 +7,17 @@ import { useLanguage } from '@/components/LanguageProvider'
 const GAME_CONFIG = {
   CANVAS_WIDTH: 1200,
   CANVAS_HEIGHT: 800,
-  PLAYER_SPEED: 3,
-  ENEMY_BASE_SPEED: 1.5,
+  PLAYER_SPEED: 4, // 提高玩家移动速度，便于躲避
+  ENEMY_BASE_SPEED: 0.8, // 大幅降低敌人基础移动速度
   EXPERIENCE_RANGE: 50,
   LEVEL_UP_EXPERIENCE_BASE: 100,
   INVULNERABLE_TIME: 1000, // 无敌时间：1秒
   WEAPON_COOLDOWNS: {
-    magic_missile: 800,
-    fireball: 1200,
-    lightning: 600,
-    ice_shard: 1000,
-    holy_water: 2000
+    magic_missile: 600,  // 降低冷却时间，提高攻击频率
+    fireball: 1000,
+    lightning: 500,
+    ice_shard: 800,
+    holy_water: 1500
   }
 }
 
@@ -196,8 +196,8 @@ export default function VampireSurvivorGame() {
   // 生成敌人
   const spawnEnemies = useCallback(() => {
     const enemyTypes: Enemy['type'][] = ['zombie', 'skeleton', 'bat', 'ghost']
-    // 调整敌人生成数量，降低初期难度
-    const enemiesPerWave = Math.max(2, Math.min(3 + Math.floor(timeElapsed / 45), 15))
+    // 大幅降低敌人生成数量
+    const enemiesPerWave = Math.max(1, Math.min(2 + Math.floor(timeElapsed / 60), 8))
     
     for (let i = 0; i < enemiesPerWave; i++) {
       const side = Math.floor(Math.random() * 4)
@@ -225,6 +225,15 @@ export default function VampireSurvivorGame() {
       // 降低初期敌人血量，让游戏更容易上手
       const baseHealth = 30 + Math.floor(timeElapsed / 15) * 8
       
+      // 根据敌人类型调整速度
+      let speedMultiplier = 1
+      switch (type) {
+        case 'zombie': speedMultiplier = 0.8; break  // 僵尸最慢
+        case 'skeleton': speedMultiplier = 1.0; break // 骷髅正常速度
+        case 'bat': speedMultiplier = 1.2; break     // 蝙蝠稍快
+        case 'ghost': speedMultiplier = 0.9; break   // 幽灵稍慢
+      }
+      
       const enemy: Enemy = {
         id: Date.now() + Math.random(),
         x,
@@ -232,7 +241,7 @@ export default function VampireSurvivorGame() {
         type,
         health: baseHealth,
         maxHealth: baseHealth,
-        speed: GAME_CONFIG.ENEMY_BASE_SPEED + Math.random() * 0.3, // 降低速度随机性
+        speed: GAME_CONFIG.ENEMY_BASE_SPEED * speedMultiplier + Math.random() * 0.1, // 大幅降低速度
         damage: 8 + Math.floor(timeElapsed / 25) * 4, // 降低初期伤害
         experienceValue: 12 + Math.floor(timeElapsed / 20) * 3 // 增加经验值奖励
       }
@@ -673,7 +682,7 @@ export default function VampireSurvivorGame() {
       
       const enemySpawner = setInterval(() => {
         spawnEnemies()
-      }, 3000) // 调整生成间隔到3秒，降低初期难度
+      }, 5000) // 大幅降低生成频率到5秒，让游戏更轻松
       
       return () => {
         clearInterval(timer)
