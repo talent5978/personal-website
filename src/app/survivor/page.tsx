@@ -183,7 +183,8 @@ export default function VampireSurvivorGame() {
   // 生成敌人
   const spawnEnemies = useCallback(() => {
     const enemyTypes: Enemy['type'][] = ['zombie', 'skeleton', 'bat', 'ghost']
-    const enemiesPerWave = Math.min(5 + Math.floor(timeElapsed / 30), 20)
+    // 确保游戏开始时至少有3个敌人，随时间增加
+    const enemiesPerWave = Math.max(3, Math.min(5 + Math.floor(timeElapsed / 30), 20))
     
     for (let i = 0; i < enemiesPerWave; i++) {
       const side = Math.floor(Math.random() * 4)
@@ -597,13 +598,16 @@ export default function VampireSurvivorGame() {
   // 游戏时间和敌人生成
   useEffect(() => {
     if (gameState === 'playing') {
+      // 游戏开始时立即生成第一批敌人
+      spawnEnemies()
+      
       const timer = setInterval(() => {
         setTimeElapsed(prev => prev + 1)
       }, 1000)
       
       const enemySpawner = setInterval(() => {
         spawnEnemies()
-      }, 2000)
+      }, 1500) // 缩短生成间隔到1.5秒
       
       return () => {
         clearInterval(timer)
