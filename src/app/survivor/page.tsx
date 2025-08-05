@@ -108,18 +108,18 @@ export default function SurvivorGame() {
         player: {
             x: 400,
             y: 300,
-            size: 20,
-            speed: 3,
+            size: 15,
+            speed: 5,
             health: 100,
             maxHealth: 100
         },
         enemies: [],
         weapons: [
-            { ...WEAPONS.whip, id: 'whip', lastFired: 0, level: 1 },
-            { ...WEAPONS.magicWand, id: 'magicWand', lastFired: 0, level: 1 },
-            { ...WEAPONS.fireball, id: 'fireball', lastFired: 0, level: 1 },
-            { ...WEAPONS.lightning, id: 'lightning', lastFired: 0, level: 1 },
-            { ...WEAPONS.iceSpike, id: 'iceSpike', lastFired: 0, level: 1 }
+            { id: 'whip', name: '鞭子', damage: 25, range: 80, cooldown: 400, lastFired: 0, level: 1, maxLevel: 5 },
+            { id: 'magicWand', name: '魔法杖', damage: 20, range: 150, cooldown: 250, lastFired: 0, level: 1, maxLevel: 5 },
+            { id: 'fireball', name: '火球术', damage: 35, range: 200, cooldown: 600, lastFired: 0, level: 1, maxLevel: 4 },
+            { id: 'lightning', name: '闪电链', damage: 30, range: 180, cooldown: 800, lastFired: 0, level: 1, maxLevel: 3 },
+            { id: 'iceSpike', name: '冰锥', damage: 40, range: 120, cooldown: 500, lastFired: 0, level: 1, maxLevel: 4 }
         ],
         projectiles: [],
         score: 0,
@@ -344,10 +344,10 @@ export default function SurvivorGame() {
             const newState = { ...prev }
 
             // 更新玩家位置
-            if (keys.has('w') || keys.has('ArrowUp')) newState.player.y -= newState.player.speed
-            if (keys.has('s') || keys.has('ArrowDown')) newState.player.y += newState.player.speed
-            if (keys.has('a') || keys.has('ArrowLeft')) newState.player.x -= newState.player.speed
-            if (keys.has('d') || keys.has('ArrowRight')) newState.player.x += newState.player.speed
+            if (keys.has('w') || keys.has('ArrowUp')) newState.player.y -= newState.player.speed * speedFactor
+            if (keys.has('s') || keys.has('ArrowDown')) newState.player.y += newState.player.speed * speedFactor
+            if (keys.has('a') || keys.has('ArrowLeft')) newState.player.x -= newState.player.speed * speedFactor
+            if (keys.has('d') || keys.has('ArrowRight')) newState.player.x += newState.player.speed * speedFactor
 
             // 边界检查
             newState.player.x = Math.max(newState.player.size, Math.min(800 - newState.player.size, newState.player.x))
@@ -598,6 +598,21 @@ export default function SurvivorGame() {
                     <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
                         ⚔️ 幸存者游戏
                     </h1>
+                    
+                    {/* 速度调节器 */}
+                    <div className="mb-4 flex justify-center items-center gap-4">
+                        <label className="text-white text-lg font-bold">游戏速度：</label>
+                        <select
+                            value={speedFactor}
+                            onChange={e => setSpeedFactor(Number(e.target.value))}
+                            className="px-4 py-2 rounded-lg bg-black bg-opacity-60 text-white border border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                            {SPEED_PRESETS.map(preset => (
+                                <option key={preset.value} value={preset.value}>{preset.label}</option>
+                            ))}
+                        </select>
+                    </div>
+                    
                     <p className="text-gray-300 mb-6 text-lg">
                         使用 WASD 或方向键移动，自动攻击敌人，生存越久分数越高！
                     </p>

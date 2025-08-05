@@ -70,7 +70,7 @@ export default function Game() {
 
     // 生成特殊食物
     const generateSpecialFood = useCallback(() => {
-        if (Math.random() < 0.15) { // 15% 概率生成特殊食物
+        if (Math.random() < 0.25) { // 增加到25% 概率生成特殊食物
             const excludePositions = [...gameState.snake, ...gameState.obstacles, gameState.food]
             const specialFood = generateRandomPosition(excludePositions)
             const types: ('speed' | 'double' | 'shield')[] = ['speed', 'double', 'shield']
@@ -325,6 +325,10 @@ export default function Game() {
         setGameState(prev => ({ ...prev, gameStarted: true }))
         generateFood()
         generateObstacles()
+        // 游戏开始时立即生成一个特殊食物
+        setTimeout(() => {
+            generateSpecialFood()
+        }, 1000) // 1秒后生成第一个特殊食物
     }
 
     // 切换游戏模式
