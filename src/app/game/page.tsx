@@ -246,18 +246,26 @@ export default function SnakeGame() {
     useEffect(() => {
         const handleKeyPress = (e: KeyboardEvent) => {
             if (!gameState.gameStarted) return
-            switch (e.key) {
-                case 'ArrowUp':
+            switch (e.key.toLowerCase()) {
+                case 'arrowup':
+                case 'w':
                     handleDirection('UP')
                     break
-                case 'ArrowDown':
+                case 'arrowdown':
+                case 's':
                     handleDirection('DOWN')
                     break
-                case 'ArrowLeft':
+                case 'arrowleft':
+                case 'a':
                     handleDirection('LEFT')
                     break
-                case 'ArrowRight':
+                case 'arrowright':
+                case 'd':
                     handleDirection('RIGHT')
+                    break
+                case ' ':
+                    e.preventDefault()
+                    // 暂停/继续游戏功能可以在这里添加
                     break
             }
         }
@@ -272,6 +280,161 @@ export default function SnakeGame() {
         const gameLoop = setInterval(moveSnake, gameState.speed)
         return () => clearInterval(gameLoop)
     }, [moveSnake, gameState.gameStarted, gameState.gameOver, gameState.speed])
+
+    // Canvas渲染
+    useEffect(() => {
+        const canvas = canvasRef.current
+        if (!canvas) return
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+
+        // 清空画布
+        ctx.fillStyle = '#000000'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+        // 绘制网格
+        ctx.strokeStyle = '#333333'
+        ctx.lineWidth = 1
+        for (let i = 0; i <= gridSize; i++) {
+            // 垂直线
+            ctx.beginPath()
+            ctx.moveTo(i * cellSize, 0)
+            ctx.lineTo(i * cellSize, canvas.height)
+            ctx.stroke()
+            
+            // 水平线
+            ctx.beginPath()
+            ctx.moveTo(0, i * cellSize)
+            ctx.lineTo(canvas.width, i * cellSize)
+            ctx.stroke()
+        }
+
+        // 绘制蛇
+        gameState.snake.forEach((segment, index) => {
+            if (index === 0) {
+                // 蛇头
+                ctx.fillStyle = gameState.powerUpActive && gameState.specialFoodType === 'shield' 
+                    ? '#00ffff' : '#00ff00'
+            } else {
+                // 蛇身
+                ctx.fillStyle = '#008800'
+            }
+            
+            ctx.fillRect(
+                segment.x * cellSize + 1,
+                segment.y * cellSize + 1,
+                cellSize - 2,
+                cellSize - 2
+            )
+            
+            // 蛇头添加眼睛
+            if (index === 0) {
+                ctx.fillStyle = '#ffffff'
+                const eyeSize = 3
+                const eyeOffset = 5
+                
+                switch (gameState.direction) {
+                    case 'RIGHT':
+                        ctx.fillRect(segment.x * cellSize + cellSize - eyeOffset, segment.y * cellSize + 4, eyeSize, eyeSize)
+                        ctx.fillRect(segment.x * cellSize + cellSize - eyeOffset, segment.y * cellSize + cellSize - 7, eyeSize, eyeSize)
+                        break
+                    case 'LEFT':
+                        ctx.fillRect(segment.x * cellSize + 2, segment.y * cellSize + 4, eyeSize, eyeSize)
+                        ctx.fillRect(segment.x * cellSize + 2, segment.y * cellSize + cellSize - 7, eyeSize, eyeSize)
+                        break
+                    case 'UP':
+                        ctx.fillRect(segment.x * cellSize + 4, segment.y * cellSize + 2, eyeSize, eyeSize)
+                        ctx.fillRect(segment.x * cellSize + cellSize - 7, segment.y * cellSize + 2, eyeSize, eyeSize)
+                        break
+                    case 'DOWN':
+                        ctx.fillRect(segment.x * cellSize + 4, segment.y * cellSize + cellSize - eyeOffset, eyeSize, eyeSize)
+                        ctx.fillRect(segment.x * cellSize + cellSize - 7, segment.y * cellSize + cellSize - eyeOffset, eyeSize, eyeSize)
+                        break
+                }
+            }
+        })
+
+        // 绘制普通食物
+        ctx.fillStyle = '#ff0000'
+        ctx.fillRect(
+            gameState.food.x * cellSize + 2,
+            gameState.food.y * cellSize + 2,
+            cellSize - 4,
+            cellSize - 4
+        )
+
+        // 绘制特殊食物
+        if (gameState.specialFood) {
+            let foodColor = '#ffaa00'
+            let foodSymbol = '🍊'
+            
+            switch (gameState.specialFoodType) {
+                case 'speed':
+                    foodColor = '#ffaa00'
+                    foodSymbol = '🍊'
+                    break
+                case 'double':
+                    foodColor = '#ffff00'
+                    foodSymbol = '⭐'
+                    break
+                case 'shield':
+                    foodColor = '#0088ff'
+                    foodSymbol = '🛡️'
+                    break
+            }
+            
+            ctx.fillStyle = foodColor
+            ctx.fillRect(
+                gameState.specialFood.x * cellSize + 1,
+                gameState.specialFood.y * cellSize + 1,
+                cellSize - 2,
+                cellSize - 2
+            )
+            
+            // 添加特殊食物符号
+            ctx.font = `${cellSize - 4}px Arial`
+            ctx.textAlign = 'center'
+            ctx.fillStyle = '#000000'
+            ctx.fillText(
+                foodSymbol,
+                gameState.specialFood.x * cellSize + cellSize / 2,
+                gameState.specialFood.y * cellSize + cellSize / 2 + 3
+            )
+        }
+
+        // 绘制障碍物
+        if (gameState.gameMode === 'obstacle') {
+            ctx.fillStyle = '#666666'
+            gameState.obstacles.forEach(obstacle => {
+                ctx.fillRect(
+                    obstacle.x * cellSize + 1,
+                    obstacle.y * cellSize + 1,
+                    cellSize - 2,
+                    cellSize - 2
+                )
+            })
+        }
+
+        // 绘制能量道具状态指示器
+        if (gameState.powerUpActive) {
+            const progressWidth = (gameState.powerUpTimer / 50) * 100
+            ctx.fillStyle = 'rgba(0, 255, 255, 0.3)'
+            ctx.fillRect(10, 10, progressWidth, 5)
+            
+            ctx.fillStyle = '#00ffff'
+            ctx.font = '12px Arial'
+            ctx.textAlign = 'left'
+            let powerUpText = ''
+            switch (gameState.specialFoodType) {
+                case 'speed': powerUpText = '⚡ 加速中'; break
+                case 'double': powerUpText = '💰 双倍分数'; break
+                case 'shield': powerUpText = '🛡️ 护盾激活'; break
+            }
+            ctx.fillText(powerUpText, 10, 30)
+        }
+
+    }, [gameState])
 
     // 提交分数
     const submitScore = async () => {
@@ -305,8 +468,9 @@ export default function SnakeGame() {
 
     // 重置游戏
     const resetGame = () => {
+        const initialSnake = [{ x: 10, y: 10 }]
         setGameState({
-            snake: [{ x: 10, y: 10 }],
+            snake: initialSnake,
             food: { x: 15, y: 15 },
             direction: 'RIGHT',
             gameOver: false,
@@ -323,7 +487,11 @@ export default function SnakeGame() {
             obstacles: [],
             gameMode: 'classic'
         })
-        generateFood()
+        
+        // 确保食物不与初始蛇位置重叠
+        setTimeout(() => {
+            generateFood()
+        }, 0)
     }
 
     // 开始游戏
@@ -375,8 +543,8 @@ export default function SnakeGame() {
                     <div className="bg-black bg-opacity-30 p-6 rounded-xl shadow-2xl border border-green-500">
                         <canvas
                             ref={canvasRef}
-                            width={600}
-                            height={400}
+                            width={gridSize * cellSize}
+                            height={gridSize * cellSize}
                             className="border border-green-400 rounded-lg shadow-lg"
                         />
                     </div>
