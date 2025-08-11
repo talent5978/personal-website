@@ -273,6 +273,114 @@ export default function SnakeGame() {
         return () => clearInterval(gameLoop)
     }, [moveSnake, gameState.gameStarted, gameState.gameOver, gameState.speed])
 
+    // 渲染游戏到画布
+    useEffect(() => {
+        const canvas = canvasRef.current
+        if (!canvas) return
+
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+
+        // 清空画布
+        ctx.fillStyle = '#1a1a1a'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+        // 绘制网格
+        ctx.strokeStyle = '#333'
+        ctx.lineWidth = 1
+        for (let i = 0; i <= gridSize; i++) {
+            ctx.beginPath()
+            ctx.moveTo(i * cellSize, 0)
+            ctx.lineTo(i * cellSize, canvas.height)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.moveTo(0, i * cellSize)
+            ctx.lineTo(canvas.width, i * cellSize)
+            ctx.stroke()
+        }
+
+        // 绘制蛇
+        gameState.snake.forEach((segment, index) => {
+            if (index === 0) {
+                // 蛇头
+                ctx.fillStyle = gameState.powerUpActive && gameState.specialFoodType === 'shield' ? '#00ffff' : '#4ade80'
+                ctx.fillRect(segment.x * cellSize, segment.y * cellSize, cellSize, cellSize)
+                ctx.strokeStyle = '#22c55e'
+                ctx.lineWidth = 2
+                ctx.strokeRect(segment.x * cellSize, segment.y * cellSize, cellSize, cellSize)
+            } else {
+                // 蛇身
+                ctx.fillStyle = '#22c55e'
+                ctx.fillRect(segment.x * cellSize, segment.y * cellSize, cellSize, cellSize)
+            }
+        })
+
+        // 绘制食物
+        ctx.fillStyle = '#ef4444'
+        ctx.beginPath()
+        ctx.arc(
+            gameState.food.x * cellSize + cellSize / 2,
+            gameState.food.y * cellSize + cellSize / 2,
+            cellSize / 2 - 2,
+            0,
+            2 * Math.PI
+        )
+        ctx.fill()
+
+        // 绘制特殊食物
+        if (gameState.specialFood) {
+            let color = '#f59e0b'
+            if (gameState.specialFoodType === 'speed') {
+                color = '#f97316'
+            } else if (gameState.specialFoodType === 'double') {
+                color = '#eab308'
+            } else if (gameState.specialFoodType === 'shield') {
+                color = '#3b82f6'
+            }
+
+            ctx.fillStyle = color
+            ctx.beginPath()
+            ctx.arc(
+                gameState.specialFood.x * cellSize + cellSize / 2,
+                gameState.specialFood.y * cellSize + cellSize / 2,
+                cellSize / 2 - 1,
+                0,
+                2 * Math.PI
+            )
+            ctx.fill()
+
+            // 添加闪烁效果
+            const time = Date.now() / 200
+            const alpha = 0.5 + 0.5 * Math.sin(time)
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`
+            ctx.beginPath()
+            ctx.arc(
+                gameState.specialFood.x * cellSize + cellSize / 2,
+                gameState.specialFood.y * cellSize + cellSize / 2,
+                cellSize / 3,
+                0,
+                2 * Math.PI
+            )
+            ctx.fill()
+        }
+
+        // 绘制障碍物
+        if (gameState.gameMode === 'obstacle') {
+            ctx.fillStyle = '#dc2626'
+            gameState.obstacles.forEach(obstacle => {
+                ctx.fillRect(obstacle.x * cellSize, obstacle.y * cellSize, cellSize, cellSize)
+            })
+        }
+
+        // 绘制能量道具效果
+        if (gameState.powerUpActive && gameState.powerUpTimer > 0) {
+            const alpha = 0.3 + 0.2 * Math.sin(Date.now() / 100)
+            ctx.fillStyle = `rgba(59, 130, 246, ${alpha})`
+            ctx.fillRect(0, 0, canvas.width, canvas.height)
+        }
+
+    }, [gameState, cellSize, gridSize])
+
     // 提交分数
     const submitScore = async () => {
         if (!gameState.playerName.trim()) return
@@ -391,36 +499,33 @@ export default function SnakeGame() {
                             >
                                 🎮 {t.snake.gameOver.restart}
                             </button>
-                            
+
                             {/* 游戏模式选择 */}
                             <div className="flex justify-center space-x-4 mt-4">
                                 <button
                                     onClick={() => changeGameMode('classic')}
-                                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                                        gameState.gameMode === 'classic'
+                                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${gameState.gameMode === 'classic'
                                             ? 'bg-green-600 text-white'
                                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                    }`}
+                                        }`}
                                 >
                                     {t.snake.gameModes.classic}
                                 </button>
                                 <button
                                     onClick={() => changeGameMode('obstacle')}
-                                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                                        gameState.gameMode === 'obstacle'
+                                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${gameState.gameMode === 'obstacle'
                                             ? 'bg-green-600 text-white'
                                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                    }`}
+                                        }`}
                                 >
                                     {t.snake.gameModes.obstacle}
                                 </button>
                                 <button
                                     onClick={() => changeGameMode('speed')}
-                                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                                        gameState.gameMode === 'speed'
+                                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${gameState.gameMode === 'speed'
                                             ? 'bg-green-600 text-white'
                                             : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                    }`}
+                                        }`}
                                 >
                                     {t.snake.gameModes.speed}
                                 </button>

@@ -73,6 +73,14 @@ interface Projectile {
     weaponId: string
     size: number
     color: string
+    // 新增属性用于特殊武器
+    isPenetrating?: boolean // 是否穿透
+    maxPenetrations?: number // 最大穿透次数
+    penetrations?: number // 当前穿透次数
+    isAOE?: boolean // 是否为AOE攻击
+    aoeRadius?: number // AOE半径
+    duration?: number // 持续时间（用于激光等持续效果）
+    maxDuration?: number // 最大持续时间
 }
 
 interface ExperienceGem {
@@ -237,6 +245,47 @@ export default function VampireSurvivorGame() {
 
     const [levelUpOptions, setLevelUpOptions] = useState<(Weapon | { type: 'stat', name: string, description: string })[]>([])
 
+    // 辅助函数：创建打击粒子效果
+    const createHitParticles = (enemy: Enemy, projectile: Projectile, count: number) => {
+        const newParticles: Particle[] = []
+        for (let i = 0; i < count; i++) {
+            newParticles.push({
+                id: Date.now() + Math.random(),
+                x: enemy.x + (Math.random() - 0.5) * 20,
+                y: enemy.y + (Math.random() - 0.5) * 20,
+                vx: (Math.random() - 0.5) * 4,
+                vy: (Math.random() - 0.5) * 4,
+                size: Math.random() * 4 + 2,
+                color: projectile.color,
+                life: 0,
+                maxLife: 30 + Math.random() * 20,
+                type: 'hit'
+            })
+        }
+        setParticles(prev => [...prev, ...newParticles])
+    }
+
+    // 辅助函数：创建爆炸效果
+    const createExplosionEffect = (x: number, y: number, color: string) => {
+        const explosionParticles: Particle[] = []
+        for (let i = 0; i < 15; i++) {
+            const angle = (i / 15) * Math.PI * 2
+            explosionParticles.push({
+                id: Date.now() + Math.random(),
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * (3 + Math.random() * 4),
+                vy: Math.sin(angle) * (3 + Math.random() * 4),
+                size: Math.random() * 8 + 4,
+                color: color,
+                life: 0,
+                maxLife: 50 + Math.random() * 30,
+                type: 'explosion'
+            })
+        }
+        setParticles(prev => [...prev, ...explosionParticles])
+    }
+
     // 键盘事件处理
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -323,7 +372,7 @@ export default function VampireSurvivorGame() {
         weapons.forEach(weapon => {
             if (currentTime - weapon.lastFired >= weapon.cooldown && enemies.length > 0) {
                 const newProjectiles: Projectile[] = []
-                
+
                 switch (weapon.id) {
                     case 'magic_missile': {
                         // 魔法导弹：追踪最近的敌人
@@ -336,7 +385,7 @@ export default function VampireSurvivorGame() {
                             )
                             return distance < nearestDistance ? enemy : nearest
                         })
-                        
+
                         const angle = Math.atan2(nearestEnemy.y - player.y, nearestEnemy.x - player.x)
                         newProjectiles.push({
                             id: Date.now() + Math.random(),
@@ -351,7 +400,7 @@ export default function VampireSurvivorGame() {
                         })
                         break
                     }
-                    
+
                     case 'fireball': {
                         // 火球术：范围爆炸攻击，向多个方向发射
                         for (let i = 0; i < 5; i++) {
@@ -370,7 +419,7 @@ export default function VampireSurvivorGame() {
                         }
                         break
                     }
-                    
+
                     case 'lightning': {
                         // 闪电链：瞬间击中多个敌人
                         const nearbyEnemies = enemies.filter(enemy => {
@@ -379,7 +428,7 @@ export default function VampireSurvivorGame() {
                             )
                             return distance <= weapon.range
                         }).slice(0, 3) // 最多攻击3个敌人
-                        
+
                         nearbyEnemies.forEach((enemy, index) => {
                             const angle = Math.atan2(enemy.y - player.y, enemy.x - player.x)
                             newProjectiles.push({
@@ -396,7 +445,7 @@ export default function VampireSurvivorGame() {
                         })
                         break
                     }
-                    
+
                     case 'ice_shard': {
                         // 冰锥术：穿透攻击，减慢敌人速度
                         const nearestEnemy = enemies.reduce((nearest, enemy) => {
@@ -408,7 +457,7 @@ export default function VampireSurvivorGame() {
                             )
                             return distance < nearestDistance ? enemy : nearest
                         })
-                        
+
                         const angle = Math.atan2(nearestEnemy.y - player.y, nearestEnemy.x - player.x)
                         newProjectiles.push({
                             id: Date.now() + Math.random(),
@@ -419,11 +468,14 @@ export default function VampireSurvivorGame() {
                             damage: weapon.damage,
                             weaponId: weapon.id,
                             size: 10,
-                            color: '#06b6d4'
+                            color: '#06b6d4',
+                            isPenetrating: true,
+                            maxPenetrations: 3,
+                            penetrations: 0
                         })
                         break
                     }
-                    
+
                     case 'holy_water': {
                         // 圣水：大范围AOE攻击
                         for (let i = 0; i < 8; i++) {
@@ -442,7 +494,7 @@ export default function VampireSurvivorGame() {
                         }
                         break
                     }
-                    
+
                     case 'wind_blade': {
                         // 风刃：扇形范围攻击
                         for (let i = 0; i < 6; i++) {
@@ -461,7 +513,7 @@ export default function VampireSurvivorGame() {
                         }
                         break
                     }
-                    
+
                     case 'poison_dart': {
                         // 毒镖：持续伤害，向随机方向发射
                         for (let i = 0; i < 3; i++) {
@@ -480,9 +532,9 @@ export default function VampireSurvivorGame() {
                         }
                         break
                     }
-                    
+
                     case 'laser_beam': {
-                        // 激光束：直线穿透攻击
+                        // 激光束：直线穿透攻击，持续效果
                         const nearestEnemy = enemies.reduce((nearest, enemy) => {
                             const distance = Math.sqrt(
                                 Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2)
@@ -492,41 +544,51 @@ export default function VampireSurvivorGame() {
                             )
                             return distance < nearestDistance ? enemy : nearest
                         })
-                        
+
                         const angle = Math.atan2(nearestEnemy.y - player.y, nearestEnemy.x - player.x)
                         newProjectiles.push({
                             id: Date.now() + Math.random(),
                             x: player.x,
                             y: player.y,
-                            vx: Math.cos(angle) * (weapon.projectileSpeed * 1.5),
-                            vy: Math.sin(angle) * (weapon.projectileSpeed * 1.5),
+                            vx: Math.cos(angle) * (weapon.projectileSpeed * 2),
+                            vy: Math.sin(angle) * (weapon.projectileSpeed * 2),
                             damage: weapon.damage,
                             weaponId: weapon.id,
-                            size: 4,
-                            color: '#f43f5e'
+                            size: 3,
+                            color: '#f43f5e',
+                            isPenetrating: true,
+                            maxPenetrations: 5,
+                            penetrations: 0,
+                            duration: 0,
+                            maxDuration: 60 // 持续60帧
                         })
                         break
                     }
-                    
+
                     case 'meteor': {
-                        // 陨石：大范围爆炸攻击
-                        for (let i = 0; i < 12; i++) {
-                            const angle = (i / 12) * Math.PI * 2
-                            newProjectiles.push({
-                                id: Date.now() + i + Math.random(),
-                                x: player.x,
-                                y: player.y,
-                                vx: Math.cos(angle) * (weapon.projectileSpeed * 0.5),
-                                vy: Math.sin(angle) * (weapon.projectileSpeed * 0.5),
-                                damage: weapon.damage * 0.4,
-                                weaponId: weapon.id,
-                                size: 18,
-                                color: '#f59e0b'
-                            })
-                        }
+                        // 陨石：随机位置AOE攻击
+                        // 在屏幕随机位置生成陨石
+                        const randomX = Math.random() * GAME_CONFIG.CANVAS_WIDTH
+                        const randomY = Math.random() * GAME_CONFIG.CANVAS_HEIGHT
+
+                        newProjectiles.push({
+                            id: Date.now() + Math.random(),
+                            x: randomX,
+                            y: randomY,
+                            vx: 0,
+                            vy: 0,
+                            damage: weapon.damage * 2,
+                            weaponId: weapon.id,
+                            size: 25,
+                            color: '#f59e0b',
+                            isAOE: true,
+                            aoeRadius: 80,
+                            duration: 0,
+                            maxDuration: 30 // 持续30帧
+                        })
                         break
                     }
-                    
+
                     case 'chain_lightning': {
                         // 连锁闪电：在敌人之间跳跃
                         const nearbyEnemies = enemies.filter(enemy => {
@@ -535,7 +597,7 @@ export default function VampireSurvivorGame() {
                             )
                             return distance <= weapon.range
                         }).slice(0, 5) // 最多攻击5个敌人
-                        
+
                         nearbyEnemies.forEach((enemy, index) => {
                             const angle = Math.atan2(enemy.y - player.y, enemy.x - player.x)
                             newProjectiles.push({
@@ -628,14 +690,31 @@ export default function VampireSurvivorGame() {
         fireWeapons()
 
         // 更新投射物
-        setProjectiles(prev => prev.map(projectile => ({
-            ...projectile,
-            x: projectile.x + projectile.vx,
-            y: projectile.y + projectile.vy
-        })).filter(projectile =>
-            projectile.x > -50 && projectile.x < GAME_CONFIG.CANVAS_WIDTH + 50 &&
-            projectile.y > -50 && projectile.y < GAME_CONFIG.CANVAS_HEIGHT + 50
-        ))
+        setProjectiles(prev => prev.map(projectile => {
+            // 对于AOE武器（如陨石），不移动位置，只更新持续时间
+            if (projectile.isAOE) {
+                return {
+                    ...projectile,
+                    duration: (projectile.duration || 0) + 1
+                }
+            }
+
+            // 对于普通投射物，正常移动
+            return {
+                ...projectile,
+                x: projectile.x + projectile.vx,
+                y: projectile.y + projectile.vy
+            }
+        }).filter(projectile => {
+            // 对于AOE武器，根据持续时间判断是否移除
+            if (projectile.isAOE && projectile.maxDuration) {
+                return (projectile.duration || 0) < projectile.maxDuration
+            }
+
+            // 对于普通投射物，根据位置判断是否移除
+            return projectile.x > -50 && projectile.x < GAME_CONFIG.CANVAS_WIDTH + 50 &&
+                projectile.y > -50 && projectile.y < GAME_CONFIG.CANVAS_HEIGHT + 50
+        }))
 
         // 绘制投射物 - 重新设计的视觉效果
         projectiles.forEach(projectile => {
@@ -646,7 +725,7 @@ export default function VampireSurvivorGame() {
                     ctx.beginPath()
                     ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2)
                     ctx.fill()
-                    
+
                     // 追踪尾迹效果
                     ctx.strokeStyle = projectile.color
                     ctx.lineWidth = 2
@@ -656,7 +735,7 @@ export default function VampireSurvivorGame() {
                     ctx.stroke()
                     break
                 }
-                
+
                 case 'fireball': {
                     // 火球术：火焰效果
                     const gradient = ctx.createRadialGradient(
@@ -666,12 +745,12 @@ export default function VampireSurvivorGame() {
                     gradient.addColorStop(0, '#ffffff')
                     gradient.addColorStop(0.3, projectile.color)
                     gradient.addColorStop(1, '#ff0000')
-                    
+
                     ctx.fillStyle = gradient
                     ctx.beginPath()
                     ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2)
                     ctx.fill()
-                    
+
                     // 火焰粒子效果
                     for (let i = 0; i < 3; i++) {
                         const angle = Math.random() * Math.PI * 2
@@ -688,31 +767,31 @@ export default function VampireSurvivorGame() {
                     }
                     break
                 }
-                
+
                 case 'lightning': {
                     // 闪电链：闪电效果
                     ctx.strokeStyle = projectile.color
                     ctx.lineWidth = 3
                     ctx.shadowColor = projectile.color
                     ctx.shadowBlur = 15
-                    
+
                     // 绘制闪电形状
                     ctx.beginPath()
                     ctx.moveTo(projectile.x - projectile.vx * 3, projectile.y - projectile.vy * 3)
                     ctx.lineTo(projectile.x, projectile.y)
                     ctx.stroke()
-                    
+
                     ctx.shadowBlur = 0
                     break
                 }
-                
+
                 case 'ice_shard': {
                     // 冰锥术：冰晶效果
                     ctx.fillStyle = projectile.color
                     ctx.beginPath()
                     ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2)
                     ctx.fill()
-                    
+
                     // 冰晶边缘
                     ctx.strokeStyle = '#ffffff'
                     ctx.lineWidth = 1
@@ -721,7 +800,7 @@ export default function VampireSurvivorGame() {
                     ctx.stroke()
                     break
                 }
-                
+
                 case 'holy_water': {
                     // 圣水：神圣光环效果
                     const gradient = ctx.createRadialGradient(
@@ -731,12 +810,12 @@ export default function VampireSurvivorGame() {
                     gradient.addColorStop(0, '#ffffff')
                     gradient.addColorStop(0.5, projectile.color)
                     gradient.addColorStop(1, '#10b981')
-                    
+
                     ctx.fillStyle = gradient
                     ctx.beginPath()
                     ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2)
                     ctx.fill()
-                    
+
                     // 神圣光环
                     ctx.strokeStyle = '#ffffff'
                     ctx.lineWidth = 2
@@ -745,17 +824,17 @@ export default function VampireSurvivorGame() {
                     ctx.stroke()
                     break
                 }
-                
+
                 case 'wind_blade': {
                     // 风刃：风刃效果
                     ctx.strokeStyle = projectile.color
                     ctx.lineWidth = 4
                     ctx.lineCap = 'round'
-                    
+
                     // 绘制风刃形状
                     const angle = Math.atan2(projectile.vy, projectile.vx)
                     const length = projectile.size * 2
-                    
+
                     ctx.beginPath()
                     ctx.moveTo(
                         projectile.x - Math.cos(angle) * length,
@@ -768,14 +847,14 @@ export default function VampireSurvivorGame() {
                     ctx.stroke()
                     break
                 }
-                
+
                 case 'poison_dart': {
                     // 毒镖：毒雾效果
                     ctx.fillStyle = projectile.color
                     ctx.beginPath()
                     ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2)
                     ctx.fill()
-                    
+
                     // 毒雾粒子
                     for (let i = 0; i < 2; i++) {
                         ctx.fillStyle = '#00ff00'
@@ -790,17 +869,18 @@ export default function VampireSurvivorGame() {
                     }
                     break
                 }
-                
+
                 case 'laser_beam': {
-                    // 激光束：激光效果
+                    // 激光束：穿透直线效果
                     ctx.strokeStyle = projectile.color
-                    ctx.lineWidth = 2
+                    ctx.lineWidth = 3
                     ctx.shadowColor = projectile.color
-                    ctx.shadowBlur = 20
-                    
+                    ctx.shadowBlur = 25
+
                     const angle = Math.atan2(projectile.vy, projectile.vx)
-                    const length = 50
-                    
+                    const length = 80 // 更长的激光束
+
+                    // 绘制主激光束
                     ctx.beginPath()
                     ctx.moveTo(
                         projectile.x - Math.cos(angle) * length,
@@ -811,50 +891,78 @@ export default function VampireSurvivorGame() {
                         projectile.y + Math.sin(angle) * length
                     )
                     ctx.stroke()
-                    
+
+                    // 绘制激光核心
+                    ctx.strokeStyle = '#ffffff'
+                    ctx.lineWidth = 1
+                    ctx.shadowBlur = 10
+                    ctx.beginPath()
+                    ctx.moveTo(
+                        projectile.x - Math.cos(angle) * length * 0.8,
+                        projectile.y - Math.sin(angle) * length * 0.8
+                    )
+                    ctx.lineTo(
+                        projectile.x + Math.cos(angle) * length * 0.8,
+                        projectile.y + Math.sin(angle) * length * 0.8
+                    )
+                    ctx.stroke()
+
                     ctx.shadowBlur = 0
                     break
                 }
-                
+
                 case 'meteor': {
-                    // 陨石：陨石效果
-                    const gradient = ctx.createRadialGradient(
-                        projectile.x, projectile.y, 0,
-                        projectile.x, projectile.y, projectile.size
-                    )
-                    gradient.addColorStop(0, '#ffffff')
-                    gradient.addColorStop(0.2, '#ffaa00')
-                    gradient.addColorStop(0.6, projectile.color)
-                    gradient.addColorStop(1, '#8b0000')
-                    
-                    ctx.fillStyle = gradient
-                    ctx.beginPath()
-                    ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2)
-                    ctx.fill()
-                    
-                    // 陨石尾迹
-                    ctx.strokeStyle = '#ffaa00'
-                    ctx.lineWidth = 3
-                    ctx.beginPath()
-                    ctx.moveTo(projectile.x - projectile.vx * 4, projectile.y - projectile.vy * 4)
-                    ctx.lineTo(projectile.x, projectile.y)
-                    ctx.stroke()
+                    // 陨石：AOE区域效果
+                    if (projectile.isAOE && projectile.aoeRadius !== undefined) {
+                        // 绘制AOE范围指示器
+                        ctx.strokeStyle = projectile.color
+                        ctx.lineWidth = 2
+                        ctx.setLineDash([5, 5])
+                        ctx.beginPath()
+                        ctx.arc(projectile.x, projectile.y, projectile.aoeRadius, 0, Math.PI * 2)
+                        ctx.stroke()
+                        ctx.setLineDash([])
+
+                        // 绘制AOE中心爆炸效果
+                        const gradient = ctx.createRadialGradient(
+                            projectile.x, projectile.y, 0,
+                            projectile.x, projectile.y, projectile.size
+                        )
+                        gradient.addColorStop(0, '#ffffff')
+                        gradient.addColorStop(0.3, '#ffaa00')
+                        gradient.addColorStop(0.7, projectile.color)
+                        gradient.addColorStop(1, '#8b0000')
+
+                        ctx.fillStyle = gradient
+                        ctx.beginPath()
+                        ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2)
+                        ctx.fill()
+
+                        // 添加AOE冲击波效果
+                        const time = Date.now() / 100
+                        const pulseRadius = projectile.aoeRadius * (0.5 + 0.3 * Math.sin(time))
+                        ctx.strokeStyle = `rgba(255, 170, 0, ${0.3 + 0.2 * Math.sin(time)})`
+                        ctx.lineWidth = 3
+                        ctx.beginPath()
+                        ctx.arc(projectile.x, projectile.y, pulseRadius, 0, Math.PI * 2)
+                        ctx.stroke()
+                    }
                     break
                 }
-                
+
                 case 'chain_lightning': {
                     // 连锁闪电：连锁效果
                     ctx.strokeStyle = projectile.color
                     ctx.lineWidth = 2
                     ctx.shadowColor = projectile.color
                     ctx.shadowBlur = 10
-                    
+
                     // 绘制连锁闪电
                     ctx.beginPath()
                     ctx.moveTo(projectile.x - projectile.vx * 2, projectile.y - projectile.vy * 2)
                     ctx.lineTo(projectile.x, projectile.y)
                     ctx.stroke()
-                    
+
                     // 闪电分支
                     const angle = Math.atan2(projectile.vy, projectile.vx)
                     const branchLength = 15
@@ -868,18 +976,18 @@ export default function VampireSurvivorGame() {
                         )
                         ctx.stroke()
                     }
-                    
+
                     ctx.shadowBlur = 0
                     break
                 }
-                
+
                 default: {
                     // 默认投射物效果
                     ctx.fillStyle = projectile.color
                     ctx.beginPath()
                     ctx.arc(projectile.x, projectile.y, projectile.size, 0, Math.PI * 2)
                     ctx.fill()
-                    
+
                     // 添加发光效果
                     ctx.shadowColor = projectile.color
                     ctx.shadowBlur = 10
@@ -927,7 +1035,7 @@ export default function VampireSurvivorGame() {
         // 碰撞检测：投射物与敌人 - 重新设计的武器效果
         projectiles.forEach(projectile => {
             const hitEnemies: Enemy[] = []
-            
+
             enemies.forEach(enemy => {
                 const distance = Math.sqrt(
                     Math.pow(projectile.x - enemy.x, 2) + Math.pow(projectile.y - enemy.y, 2)
@@ -951,7 +1059,7 @@ export default function VampireSurvivorGame() {
                         setProjectiles(prev => prev.filter(p => p.id !== projectile.id))
                         break
                     }
-                    
+
                     case 'fireball': {
                         // 火球术：范围爆炸伤害
                         hitEnemies.forEach(enemy => {
@@ -965,7 +1073,7 @@ export default function VampireSurvivorGame() {
                         setProjectiles(prev => prev.filter(p => p.id !== projectile.id))
                         break
                     }
-                    
+
                     case 'lightning': {
                         // 闪电链：瞬间伤害，不穿透
                         hitEnemies.forEach(enemy => {
@@ -977,32 +1085,45 @@ export default function VampireSurvivorGame() {
                         setProjectiles(prev => prev.filter(p => p.id !== projectile.id))
                         break
                     }
-                    
+
                     case 'ice_shard': {
                         // 冰锥术：穿透攻击，减慢敌人速度
                         hitEnemies.forEach(enemy => {
                             createHitParticles(enemy, projectile, 10)
                             setEnemies(prev => prev.map(e =>
-                                e.id === enemy.id ? { 
-                                    ...e, 
+                                e.id === enemy.id ? {
+                                    ...e,
                                     health: e.health - projectile.damage,
                                     speed: e.speed * 0.7 // 减慢速度
                                 } : e
                             ))
                         })
-                        // 冰锥可以穿透，不立即移除
+
+                        // 更新穿透次数
+                        if (projectile.isPenetrating && projectile.penetrations !== undefined) {
+                            const newPenetrations = projectile.penetrations + hitEnemies.length
+                            if (newPenetrations >= (projectile.maxPenetrations || 3)) {
+                                setProjectiles(prev => prev.filter(p => p.id !== projectile.id))
+                            } else {
+                                setProjectiles(prev => prev.map(p =>
+                                    p.id === projectile.id
+                                        ? { ...p, penetrations: newPenetrations }
+                                        : p
+                                ))
+                            }
+                        }
                         break
                     }
-                    
+
                     case 'holy_water': {
                         // 圣水：大范围AOE，对不死生物额外伤害
                         hitEnemies.forEach(enemy => {
                             const extraDamage = enemy.type === 'zombie' || enemy.type === 'skeleton' ? projectile.damage * 0.5 : 0
                             createHitParticles(enemy, projectile, 15)
                             setEnemies(prev => prev.map(e =>
-                                e.id === enemy.id ? { 
-                                    ...e, 
-                                    health: e.health - projectile.damage - extraDamage 
+                                e.id === enemy.id ? {
+                                    ...e,
+                                    health: e.health - projectile.damage - extraDamage
                                 } : e
                             ))
                         })
@@ -1010,7 +1131,7 @@ export default function VampireSurvivorGame() {
                         setProjectiles(prev => prev.filter(p => p.id !== projectile.id))
                         break
                     }
-                    
+
                     case 'wind_blade': {
                         // 风刃：扇形范围伤害
                         hitEnemies.forEach(enemy => {
@@ -1022,14 +1143,14 @@ export default function VampireSurvivorGame() {
                         setProjectiles(prev => prev.filter(p => p.id !== projectile.id))
                         break
                     }
-                    
+
                     case 'poison_dart': {
                         // 毒镖：持续伤害效果
                         hitEnemies.forEach(enemy => {
                             createHitParticles(enemy, projectile, 5)
                             setEnemies(prev => prev.map(e =>
-                                e.id === enemy.id ? { 
-                                    ...e, 
+                                e.id === enemy.id ? {
+                                    ...e,
                                     health: e.health - projectile.damage,
                                     // 添加持续伤害效果
                                     damage: e.damage + 2 // 增加敌人伤害作为持续效果
@@ -1039,7 +1160,7 @@ export default function VampireSurvivorGame() {
                         setProjectiles(prev => prev.filter(p => p.id !== projectile.id))
                         break
                     }
-                    
+
                     case 'laser_beam': {
                         // 激光束：穿透攻击，直线伤害
                         hitEnemies.forEach(enemy => {
@@ -1048,23 +1169,61 @@ export default function VampireSurvivorGame() {
                                 e.id === enemy.id ? { ...e, health: e.health - projectile.damage } : e
                             ))
                         })
-                        // 激光可以穿透，不立即移除
+
+                        // 更新穿透次数
+                        if (projectile.isPenetrating && projectile.penetrations !== undefined) {
+                            const newPenetrations = projectile.penetrations + hitEnemies.length
+                            if (newPenetrations >= (projectile.maxPenetrations || 5)) {
+                                setProjectiles(prev => prev.filter(p => p.id !== projectile.id))
+                            } else {
+                                setProjectiles(prev => prev.map(p =>
+                                    p.id === projectile.id
+                                        ? { ...p, penetrations: newPenetrations }
+                                        : p
+                                ))
+                            }
+                        }
                         break
                     }
-                    
+
                     case 'meteor': {
-                        // 陨石：大范围爆炸，高伤害
-                        hitEnemies.forEach(enemy => {
-                            createHitParticles(enemy, projectile, 20)
-                            setEnemies(prev => prev.map(e =>
-                                e.id === enemy.id ? { ...e, health: e.health - projectile.damage } : e
-                            ))
-                        })
-                        createExplosionEffect(projectile.x, projectile.y, projectile.color)
-                        setProjectiles(prev => prev.filter(p => p.id !== projectile.id))
+                        // 陨石：AOE范围伤害
+                        if (projectile.isAOE && projectile.aoeRadius !== undefined) {
+                            // 检查AOE范围内的所有敌人
+                            const aoeEnemies = enemies.filter(enemy => {
+                                const distance = Math.sqrt(
+                                    Math.pow(enemy.x - projectile.x, 2) + Math.pow(enemy.y - projectile.y, 2)
+                                )
+                                return distance <= projectile.aoeRadius!
+                            })
+
+                            aoeEnemies.forEach(enemy => {
+                                createHitParticles(enemy, projectile, 15)
+                                setEnemies(prev => prev.map(e =>
+                                    e.id === enemy.id ? { ...e, health: e.health - projectile.damage } : e
+                                ))
+                            })
+
+                            // 创建AOE爆炸效果
+                            createExplosionEffect(projectile.x, projectile.y, projectile.color)
+                        }
+
+                        // 陨石持续一段时间后消失
+                        if (projectile.duration !== undefined && projectile.maxDuration) {
+                            const newDuration = projectile.duration + 1
+                            if (newDuration >= projectile.maxDuration) {
+                                setProjectiles(prev => prev.filter(p => p.id !== projectile.id))
+                            } else {
+                                setProjectiles(prev => prev.map(p =>
+                                    p.id === projectile.id
+                                        ? { ...p, duration: newDuration }
+                                        : p
+                                ))
+                            }
+                        }
                         break
                     }
-                    
+
                     case 'chain_lightning': {
                         // 连锁闪电：在敌人之间跳跃
                         hitEnemies.forEach(enemy => {
@@ -1079,47 +1238,6 @@ export default function VampireSurvivorGame() {
                 }
             }
         })
-
-        // 辅助函数：创建打击粒子效果
-        const createHitParticles = (enemy: Enemy, projectile: Projectile, count: number) => {
-            const newParticles: Particle[] = []
-            for (let i = 0; i < count; i++) {
-                newParticles.push({
-                    id: Date.now() + Math.random(),
-                    x: enemy.x + (Math.random() - 0.5) * 20,
-                    y: enemy.y + (Math.random() - 0.5) * 20,
-                    vx: (Math.random() - 0.5) * 4,
-                    vy: (Math.random() - 0.5) * 4,
-                    size: Math.random() * 4 + 2,
-                    color: projectile.color,
-                    life: 0,
-                    maxLife: 30 + Math.random() * 20,
-                    type: 'hit'
-                })
-            }
-            setParticles(prev => [...prev, ...newParticles])
-        }
-
-        // 辅助函数：创建爆炸效果
-        const createExplosionEffect = (x: number, y: number, color: string) => {
-            const explosionParticles: Particle[] = []
-            for (let i = 0; i < 15; i++) {
-                const angle = (i / 15) * Math.PI * 2
-                explosionParticles.push({
-                    id: Date.now() + Math.random(),
-                    x: x,
-                    y: y,
-                    vx: Math.cos(angle) * (3 + Math.random() * 4),
-                    vy: Math.sin(angle) * (3 + Math.random() * 4),
-                    size: Math.random() * 8 + 4,
-                    color: color,
-                    life: 0,
-                    maxLife: 50 + Math.random() * 30,
-                    type: 'explosion'
-                })
-            }
-            setParticles(prev => [...prev, ...explosionParticles])
-        }
 
         // 移除死亡敌人并生成经验宝石
         setEnemies(prev => {
