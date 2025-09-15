@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { getOrCreateTempUserId } from '@/lib/garden'
+import SeedEarnedAnimation from '@/components/SeedEarnedAnimation'
 
 interface Post {
   id: number
@@ -33,6 +35,7 @@ export default function PostDetail() {
   const [likes, setLikes] = useState(0)
   const [hasLiked, setHasLiked] = useState(false)
   const [showShareMenu, setShowShareMenu] = useState(false)
+  const [showSeedAnimation, setShowSeedAnimation] = useState(false)
 
   // 获取帖子详情
   const fetchPost = async () => {
@@ -105,19 +108,32 @@ export default function PostDetail() {
     }
 
     try {
+      const tempUserId = getOrCreateTempUserId();
       const response = await fetch(`/api/posts/${postId}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ content: commentContent, author: commentAuthor }),
+        body: JSON.stringify({
+          content: commentContent,
+          author: commentAuthor,
+          tempUserId: tempUserId
+        }),
       })
 
       if (response.ok) {
+        const newComment = await response.json();
         setCommentContent('')
         setCommentAuthor('')
         fetchPost() // 重新获取帖子和评论
-        alert('留言成功！')
+        if (newComment.seedEarned) {
+          setShowSeedAnimation(true)
+          setTimeout(() => {
+            alert('留言成功！')
+          }, 2500)
+        } else {
+          alert('留言成功！')
+        }
       } else {
         alert('留言失败，请重试')
       }
@@ -208,8 +224,8 @@ export default function PostDetail() {
               <button
                 onClick={handleLike}
                 className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all ${hasLiked
-                    ? 'bg-red-500 text-white'
-                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
                   }`}
               >
                 <span>{hasLiked ? '❤️' : '🤍'}</span>
@@ -252,6 +268,11 @@ export default function PostDetail() {
 
           {/* 留言表单 */}
           <form onSubmit={handleSubmitComment} className="mb-8 p-6 bg-black bg-opacity-40 rounded-xl border border-blue-400">
+            <div className="mb-4 p-3 bg-green-900 bg-opacity-30 border border-green-500 rounded-lg">
+              <p className="text-green-300 text-sm">
+                🌱 发表留言可以获得1颗种子，用于在社区花园种植植物！
+              </p>
+            </div>
             <div className="grid md:grid-cols-2 gap-4 mb-4">
               <input
                 type="text"
@@ -304,6 +325,13 @@ export default function PostDetail() {
           </div>
         </div>
       </div>
+
+      {/* 种子获得动画 */}
+      <SeedEarnedAnimation
+        show={showSeedAnimation}
+        onComplete={() => setShowSeedAnimation(false)}
+        amount={1}
+      />
     </div>
   )
 } 

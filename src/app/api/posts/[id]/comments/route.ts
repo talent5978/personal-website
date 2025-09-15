@@ -31,7 +31,7 @@ export async function POST(
     }
 
     const body = await request.json()
-    const { content, author } = body
+    const { content, author, tempUserId } = body
 
     // 验证输入
     if (!content || !author) {
@@ -63,7 +63,42 @@ export async function POST(
       }
     })
 
-    return NextResponse.json(comment, { status: 201 })
+    // 如果有临时用户ID，给予种子奖励（留言 +2）
+    if (tempUserId) {
+      try {
+        // 获取或创建临时用户
+        let tempUser = await prisma.tempUser.findUnique({
+          where: { id: tempUserId }
+        });
+
+        if (!tempUser) {
+          tempUser = await prisma.tempUser.create({
+            data: {
+              id: tempUserId,
+              seeds: 2,
+              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
+            }
+          });
+        } else {
+          // 更新种子数量和最后活动时间
+          await prisma.tempUser.update({
+            where: { id: tempUserId },
+            data: {
+              seeds: { increment: 2 },
+              lastActivity: new Date()
+            }
+          });
+        }
+      } catch (seedError) {
+        console.error('给予种子奖励失败:', seedError);
+        // 不影响评论创建，继续执行
+      }
+    }
+
+    return NextResponse.json({
+      ...comment,
+      seedEarned: !!tempUserId
+    }, { status: 201 })
   } catch (error) {
     console.error('创建留言失败:', error)
     return NextResponse.json(

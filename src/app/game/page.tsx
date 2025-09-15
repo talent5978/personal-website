@@ -1,390 +1,109 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLanguage } from '@/components/LanguageProvider'
 
-interface Position {
-    x: number
-    y: number
-}
-
-interface GameState {
-    snake: Position[]
-    food: Position
-    direction: string
-    gameOver: boolean
-    score: number
-    gameStarted: boolean
-    playerName: string
-    showSubmitForm: boolean
-    level: number
-    speed: number
-    specialFood: Position | null
-    specialFoodType: 'speed' | 'double' | 'shield' | null
-    powerUpActive: boolean
-    powerUpTimer: number
-    obstacles: Position[]
-    gameMode: 'classic' | 'obstacle' | 'speed'
-}
+const GRID_SIZE = 20
+const CELL_SIZE = 20
+const INITIAL_SNAKE = [{ x: 10, y: 10 }]
+const INITIAL_DIRECTION = { x: 1, y: 0 }
 
 export default function SnakeGame() {
     const { t } = useLanguage()
-    const [gameState, setGameState] = useState<GameState>({
-        snake: [{ x: 10, y: 10 }],
-        food: { x: 15, y: 15 },
-        direction: 'RIGHT',
-        gameOver: false,
-        score: 0,
-        gameStarted: false,
-        playerName: '',
-        showSubmitForm: false,
-        level: 1,
-        speed: 150,
-        specialFood: null,
-        specialFoodType: null,
-        powerUpActive: false,
-        powerUpTimer: 0,
-        obstacles: [],
-        gameMode: 'classic'
-    })
+    const [snake, setSnake] = useState(INITIAL_SNAKE)
+    const [direction, setDirection] = useState(INITIAL_DIRECTION)
+    const [food, setFood] = useState({ x: 15, y: 15 })
+    const [gameOver, setGameOver] = useState(false)
+    const [score, setScore] = useState(0)
+    const [gameStarted, setGameStarted] = useState(false)
+    const [showScoreSubmission, setShowScoreSubmission] = useState(false)
+    const [playerName, setPlayerName] = useState('')
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [gameTime, setGameTime] = useState(0)
+    const [level, setLevel] = useState(1)
+    const gameLoopRef = useRef<NodeJS.Timeout>()
+    const startTimeRef = useRef<number>(0)
 
-    const gridSize = 20
-    const cellSize = 20
-    const canvasRef = useRef<HTMLCanvasElement>(null)
+    // 计算难度等级
+    const calculateLevel = (time: number) => {
+        return Math.floor(time / 10) + 1 // 每10秒增加一级
+    }
 
-    // 生成随机位置（避免与蛇身和障碍物重叠）
-    const generateRandomPosition = useCallback((excludePositions: Position[] = []) => {
-        let newPos: Position
-        do {
-            newPos = {
-                x: Math.floor(Math.random() * gridSize),
-                y: Math.floor(Math.random() * gridSize)
-            }
-        } while (excludePositions.some(pos => pos.x === newPos.x && pos.y === newPos.y))
-        return newPos
-    }, [])
+    // 获取当前难度参数
+    const getDifficultyParams = () => {
+        const baseSpeed = 120 // 基础速度更快（毫秒）
+        const speedDecrease = (level - 1) * 15 // 每级减少15ms
+        const gameSpeed = Math.max(baseSpeed - speedDecrease, 30) // 最快30ms
 
-    // 生成食物
-    const generateFood = useCallback(() => {
-        const excludePositions = [...gameState.snake, ...gameState.obstacles]
-        const newFood = generateRandomPosition(excludePositions)
-        setGameState(prev => ({ ...prev, food: newFood }))
-    }, [gameState.snake, gameState.obstacles, generateRandomPosition])
+        return { gameSpeed }
+    }
 
-    // 生成特殊食物
-    const generateSpecialFood = useCallback(() => {
-        if (Math.random() < 0.4) { // 增加到40% 概率生成特殊食物
-            const excludePositions = [...gameState.snake, ...gameState.obstacles]
-            if (gameState.food) {
-                excludePositions.push(gameState.food)
-            }
-            const specialFood = generateRandomPosition(excludePositions)
-            const types: ('speed' | 'double' | 'shield')[] = ['speed', 'double', 'shield']
-            const specialFoodType = types[Math.floor(Math.random() * types.length)]
-
-            setGameState(prev => ({
-                ...prev,
-                specialFood,
-                specialFoodType
-            }))
-        }
-    }, [gameState.snake, gameState.obstacles, generateRandomPosition])
-
-    // 生成障碍物（障碍模式）
-    const generateObstacles = useCallback(() => {
-        if (gameState.gameMode === 'obstacle') {
-            const newObstacles: Position[] = []
-            const obstacleCount = Math.min(gameState.level + 2, 8)
-
-            for (let i = 0; i < obstacleCount; i++) {
-                const excludePositions = [...gameState.snake, gameState.food, ...newObstacles]
-                const obstacle = generateRandomPosition(excludePositions)
-                newObstacles.push(obstacle)
-            }
-
-            setGameState(prev => ({ ...prev, obstacles: newObstacles }))
-        }
-    }, [gameState.gameMode, gameState.level, gameState.snake, gameState.food, generateRandomPosition])
+    // 生成随机食物位置
+    const generateFood = () => {
+        const x = Math.floor(Math.random() * GRID_SIZE)
+        const y = Math.floor(Math.random() * GRID_SIZE)
+        setFood({ x, y })
+    }
 
     // 检查碰撞
-    const checkCollision = useCallback((head: Position) => {
+    const checkCollision = (head: { x: number; y: number }) => {
         // 检查墙壁碰撞
-        if (head.x < 0 || head.x >= gridSize || head.y < 0 || head.y >= gridSize) {
+        if (head.x < 0 || head.x >= GRID_SIZE || head.y < 0 || head.y >= GRID_SIZE) {
             return true
         }
-        // 检查自身碰撞（如果有护盾则忽略）
-        if (!gameState.powerUpActive || gameState.specialFoodType !== 'shield') {
-            if (gameState.snake.some(segment => segment.x === head.x && segment.y === head.y)) {
-                return true
+        // 检查自身碰撞
+        return snake.some(segment => segment.x === head.x && segment.y === head.y)
+    }
+
+    // 游戏主循环
+    const gameLoop = () => {
+        if (gameOver) return
+
+        // 更新游戏时间和等级
+        const currentTime = Date.now()
+        const elapsedTime = (currentTime - startTimeRef.current) / 1000
+        setGameTime(elapsedTime)
+        const newLevel = calculateLevel(elapsedTime)
+        if (newLevel !== level) {
+            setLevel(newLevel)
+        }
+
+        setSnake(prevSnake => {
+            const newSnake = [...prevSnake]
+            const head = { ...newSnake[0] }
+
+            // 移动蛇头
+            head.x += direction.x
+            head.y += direction.y
+
+            // 检查碰撞
+            if (checkCollision(head)) {
+                setGameOver(true)
+                return prevSnake
             }
-        }
-        // 检查障碍物碰撞
-        if (gameState.gameMode === 'obstacle') {
-            if (gameState.obstacles.some(obstacle => obstacle.x === head.x && obstacle.y === head.y)) {
-                return true
+
+            newSnake.unshift(head)
+
+            // 检查是否吃到食物
+            if (head.x === food.x && head.y === food.y) {
+                setScore(prev => prev + 10)
+                generateFood()
+            } else {
+                newSnake.pop()
             }
-        }
-        return false
-    }, [gameState.snake, gameState.obstacles, gameState.gameMode, gameState.powerUpActive, gameState.specialFoodType])
 
-    // 移动蛇
-    const moveSnake = useCallback(() => {
-        if (gameState.gameOver || !gameState.gameStarted) return
+            return newSnake
+        })
+    }
 
-        const newSnake = [...gameState.snake]
-        const head = { ...newSnake[0] }
-
-        switch (gameState.direction) {
-            case 'UP':
-                head.y -= 1
-                break
-            case 'DOWN':
-                head.y += 1
-                break
-            case 'LEFT':
-                head.x -= 1
-                break
-            case 'RIGHT':
-                head.x += 1
-                break
-        }
-
-        if (checkCollision(head)) {
-            setGameState(prev => ({ ...prev, gameOver: true, showSubmitForm: true }))
+    // 提交分数到排行榜
+    const submitScore = async () => {
+        if (!playerName.trim()) {
+            alert('请输入玩家名称')
             return
         }
 
-        newSnake.unshift(head)
-
-        // 检查是否吃到食物
-        let newScore = gameState.score
-        let newLevel = gameState.level
-        let newSpeed = gameState.speed
-        let powerUpActive = gameState.powerUpActive
-        let powerUpTimer = gameState.powerUpTimer
-        let specialFood = gameState.specialFood
-        let specialFoodType = gameState.specialFoodType
-
-        if (head.x === gameState.food.x && head.y === gameState.food.y) {
-            // 普通食物
-            const baseScore = gameState.specialFoodType === 'double' ? 20 : 10
-            newScore += baseScore
-            generateFood()
-            generateSpecialFood()
-
-            // 升级检查
-            if (newScore >= gameState.level * 50) {
-                newLevel = gameState.level + 1
-                newSpeed = Math.max(50, gameState.speed - 10)
-            }
-        } else if (gameState.specialFood && head.x === gameState.specialFood.x && head.y === gameState.specialFood.y) {
-            // 特殊食物
-            newScore += 30
-            powerUpActive = true
-            powerUpTimer = 50 // 50帧的持续时间
-
-            switch (gameState.specialFoodType) {
-                case 'speed':
-                    newSpeed = Math.max(30, gameState.speed - 20)
-                    break
-                case 'double':
-                    // 双倍分数效果在吃到食物时已经计算
-                    break
-                case 'shield':
-                    // 护盾效果在碰撞检测中处理
-                    break
-            }
-
-            specialFood = null
-            specialFoodType = null
-        } else {
-            newSnake.pop()
-        }
-
-        // 更新能量道具计时器
-        if (powerUpActive) {
-            powerUpTimer--
-            if (powerUpTimer <= 0) {
-                powerUpActive = false
-                powerUpTimer = 0
-                specialFoodType = null
-                newSpeed = Math.max(50, 150 - (newLevel - 1) * 10)
-            }
-        }
-
-        setGameState(prev => ({
-            ...prev,
-            snake: newSnake,
-            score: newScore,
-            level: newLevel,
-            speed: newSpeed,
-            powerUpActive,
-            powerUpTimer,
-            specialFood,
-            specialFoodType
-        }))
-    }, [gameState, checkCollision, generateFood, generateSpecialFood])
-
-    // 键盘和按钮方向控制
-    const handleDirection = (dir: string) => {
-        if (!gameState.gameStarted) return
-        if (dir === 'UP' && gameState.direction !== 'DOWN') {
-            setGameState(prev => ({ ...prev, direction: 'UP' }))
-        }
-        if (dir === 'DOWN' && gameState.direction !== 'UP') {
-            setGameState(prev => ({ ...prev, direction: 'DOWN' }))
-        }
-        if (dir === 'LEFT' && gameState.direction !== 'RIGHT') {
-            setGameState(prev => ({ ...prev, direction: 'LEFT' }))
-        }
-        if (dir === 'RIGHT' && gameState.direction !== 'LEFT') {
-            setGameState(prev => ({ ...prev, direction: 'RIGHT' }))
-        }
-    }
-
-    // 键盘控制
-    useEffect(() => {
-        const handleKeyPress = (e: KeyboardEvent) => {
-            if (!gameState.gameStarted) return
-            switch (e.key) {
-                case 'ArrowUp':
-                    handleDirection('UP')
-                    break
-                case 'ArrowDown':
-                    handleDirection('DOWN')
-                    break
-                case 'ArrowLeft':
-                    handleDirection('LEFT')
-                    break
-                case 'ArrowRight':
-                    handleDirection('RIGHT')
-                    break
-            }
-        }
-        window.addEventListener('keydown', handleKeyPress)
-        return () => window.removeEventListener('keydown', handleKeyPress)
-    }, [gameState.gameStarted, gameState.direction])
-
-    // 游戏循环
-    useEffect(() => {
-        if (!gameState.gameStarted || gameState.gameOver) return
-
-        const gameLoop = setInterval(moveSnake, gameState.speed)
-        return () => clearInterval(gameLoop)
-    }, [moveSnake, gameState.gameStarted, gameState.gameOver, gameState.speed])
-
-    // 渲染游戏到画布
-    useEffect(() => {
-        const canvas = canvasRef.current
-        if (!canvas) return
-
-        const ctx = canvas.getContext('2d')
-        if (!ctx) return
-
-        // 清空画布
-        ctx.fillStyle = '#1a1a1a'
-        ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-        // 绘制网格
-        ctx.strokeStyle = '#333'
-        ctx.lineWidth = 1
-        for (let i = 0; i <= gridSize; i++) {
-            ctx.beginPath()
-            ctx.moveTo(i * cellSize, 0)
-            ctx.lineTo(i * cellSize, canvas.height)
-            ctx.stroke()
-            ctx.beginPath()
-            ctx.moveTo(0, i * cellSize)
-            ctx.lineTo(canvas.width, i * cellSize)
-            ctx.stroke()
-        }
-
-        // 绘制蛇
-        gameState.snake.forEach((segment, index) => {
-            if (index === 0) {
-                // 蛇头
-                ctx.fillStyle = gameState.powerUpActive && gameState.specialFoodType === 'shield' ? '#00ffff' : '#4ade80'
-                ctx.fillRect(segment.x * cellSize, segment.y * cellSize, cellSize, cellSize)
-                ctx.strokeStyle = '#22c55e'
-                ctx.lineWidth = 2
-                ctx.strokeRect(segment.x * cellSize, segment.y * cellSize, cellSize, cellSize)
-            } else {
-                // 蛇身
-                ctx.fillStyle = '#22c55e'
-                ctx.fillRect(segment.x * cellSize, segment.y * cellSize, cellSize, cellSize)
-            }
-        })
-
-        // 绘制食物
-        ctx.fillStyle = '#ef4444'
-        ctx.beginPath()
-        ctx.arc(
-            gameState.food.x * cellSize + cellSize / 2,
-            gameState.food.y * cellSize + cellSize / 2,
-            cellSize / 2 - 2,
-            0,
-            2 * Math.PI
-        )
-        ctx.fill()
-
-        // 绘制特殊食物
-        if (gameState.specialFood) {
-            let color = '#f59e0b'
-            if (gameState.specialFoodType === 'speed') {
-                color = '#f97316'
-            } else if (gameState.specialFoodType === 'double') {
-                color = '#eab308'
-            } else if (gameState.specialFoodType === 'shield') {
-                color = '#3b82f6'
-            }
-
-            ctx.fillStyle = color
-            ctx.beginPath()
-            ctx.arc(
-                gameState.specialFood.x * cellSize + cellSize / 2,
-                gameState.specialFood.y * cellSize + cellSize / 2,
-                cellSize / 2 - 1,
-                0,
-                2 * Math.PI
-            )
-            ctx.fill()
-
-            // 添加闪烁效果
-            const time = Date.now() / 200
-            const alpha = 0.5 + 0.5 * Math.sin(time)
-            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`
-            ctx.beginPath()
-            ctx.arc(
-                gameState.specialFood.x * cellSize + cellSize / 2,
-                gameState.specialFood.y * cellSize + cellSize / 2,
-                cellSize / 3,
-                0,
-                2 * Math.PI
-            )
-            ctx.fill()
-        }
-
-        // 绘制障碍物
-        if (gameState.gameMode === 'obstacle') {
-            ctx.fillStyle = '#dc2626'
-            gameState.obstacles.forEach(obstacle => {
-                ctx.fillRect(obstacle.x * cellSize, obstacle.y * cellSize, cellSize, cellSize)
-            })
-        }
-
-        // 绘制能量道具效果
-        if (gameState.powerUpActive && gameState.powerUpTimer > 0) {
-            const alpha = 0.3 + 0.2 * Math.sin(Date.now() / 100)
-            ctx.fillStyle = `rgba(59, 130, 246, ${alpha})`
-            ctx.fillRect(0, 0, canvas.width, canvas.height)
-        }
-
-    }, [gameState, cellSize, gridSize])
-
-    // 提交分数
-    const submitScore = async () => {
-        if (!gameState.playerName.trim()) return
-
+        setIsSubmitting(true)
         try {
             const response = await fetch('/api/scores', {
                 method: 'POST',
@@ -392,274 +111,192 @@ export default function SnakeGame() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    playerName: gameState.playerName.trim(),
-                    score: gameState.score,
+                    playerName: playerName.trim(),
+                    score: score,
                     gameType: 'snake'
                 }),
             })
 
             if (response.ok) {
                 alert('分数提交成功！')
-                setGameState(prev => ({ ...prev, showSubmitForm: false }))
-                resetGame()
+                setShowScoreSubmission(false)
+                setPlayerName('')
             } else {
-                alert('提交失败，请重试')
+                const error = await response.json()
+                alert(error.error || '提交失败，请重试')
             }
         } catch (error) {
             console.error('提交分数失败:', error)
             alert('提交失败，请重试')
+        } finally {
+            setIsSubmitting(false)
         }
-    }
-
-    // 重置游戏
-    const resetGame = () => {
-        setGameState({
-            snake: [{ x: 10, y: 10 }],
-            food: { x: 15, y: 15 },
-            direction: 'RIGHT',
-            gameOver: false,
-            score: 0,
-            gameStarted: false,
-            playerName: '',
-            showSubmitForm: false,
-            level: 1,
-            speed: 150,
-            specialFood: null,
-            specialFoodType: null,
-            powerUpActive: false,
-            powerUpTimer: 0,
-            obstacles: [],
-            gameMode: 'classic'
-        })
-        generateFood()
     }
 
     // 开始游戏
     const startGame = () => {
-        setGameState(prev => ({ ...prev, gameStarted: true }))
-        generateFood()
-        generateObstacles()
-        // 游戏开始时立即生成一个特殊食物
-        setTimeout(() => {
-            generateSpecialFood()
-        }, 500) // 0.5秒后生成第一个特殊食物
+        setSnake(INITIAL_SNAKE)
+        setDirection(INITIAL_DIRECTION)
+        setFood({ x: 15, y: 15 })
+        setGameOver(false)
+        setScore(0)
+        setGameStarted(true)
+        setShowScoreSubmission(false)
+        setPlayerName('')
+        setGameTime(0)
+        setLevel(1)
+        startTimeRef.current = Date.now()
     }
 
-    // 切换游戏模式
-    const changeGameMode = (mode: 'classic' | 'obstacle' | 'speed') => {
-        setGameState(prev => ({
-            ...prev,
-            gameMode: mode,
-            obstacles: mode === 'obstacle' ? [] : prev.obstacles,
-            speed: mode === 'speed' ? 100 : 150
-        }))
-    }
+    // 键盘控制
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (!gameStarted) return
+
+            switch (e.key) {
+                case 'ArrowUp':
+                case 'w':
+                    if (direction.y === 0) setDirection({ x: 0, y: -1 })
+                    break
+                case 'ArrowDown':
+                case 's':
+                    if (direction.y === 0) setDirection({ x: 0, y: 1 })
+                    break
+                case 'ArrowLeft':
+                case 'a':
+                    if (direction.x === 0) setDirection({ x: -1, y: 0 })
+                    break
+                case 'ArrowRight':
+                case 'd':
+                    if (direction.x === 0) setDirection({ x: 1, y: 0 })
+                    break
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown)
+        return () => window.removeEventListener('keydown', handleKeyDown)
+    }, [direction, gameStarted])
+
+    // 游戏循环
+    useEffect(() => {
+        if (gameStarted && !gameOver) {
+            const { gameSpeed } = getDifficultyParams()
+            gameLoopRef.current = setInterval(gameLoop, gameSpeed)
+        }
+        return () => {
+            if (gameLoopRef.current) {
+                clearInterval(gameLoopRef.current)
+            }
+        }
+    }, [gameStarted, gameOver, direction, food, level])
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-green-900 to-gray-900 py-8">
-            <div className="max-w-6xl mx-auto">
-                <div className="text-center mb-8">
-                    <h1 className="text-5xl font-bold text-white mb-4 bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent">
-                        {t.snake.title}
-                    </h1>
-                    <p className="text-gray-300 mb-6 text-lg">
-                        {t.snake.description}
-                    </p>
+        <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
+            <div className="text-center mb-8">
+                <h1 className="text-4xl font-bold text-green-400 mb-4">贪吃蛇</h1>
+                <p className="text-gray-400 mb-4">使用 WASD 或方向键控制蛇的移动</p>
+                <div className="text-xl text-white mb-2">得分: {score}</div>
+                <div className="text-lg text-green-300 mb-2">等级: {level}</div>
+                <div className="text-lg text-blue-300 mb-4">时间: {Math.floor(gameTime)}s</div>
+            </div>
 
-                    {/* 游戏状态显示 */}
-                    {gameState.gameStarted && !gameState.gameOver && (
-                        <div className="bg-black bg-opacity-50 rounded-lg p-4 mb-4 inline-block">
-                            <div className="text-white text-sm">
-                                <span className="mr-4">🎯 {t.snake.stats.score}: {gameState.score}</span>
-                                <span className="mr-4">📏 {t.snake.stats.length}: {gameState.snake.length}</span>
-                                <span className="mr-4">📈 {t.snake.stats.level}: {gameState.level}</span>
-                                <span className="mr-4">⚡ {t.snake.stats.speed}: {gameState.speed}</span>
-                            </div>
-                        </div>
-                    )}
-                </div>
+            {!gameStarted ? (
+                <button
+                    onClick={startGame}
+                    className="px-8 py-4 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700 transition-colors"
+                >
+                    开始游戏
+                </button>
+            ) : (
+                <div className="relative">
+                    <div
+                        className="bg-gray-800 border-2 border-gray-600"
+                        style={{
+                            width: GRID_SIZE * CELL_SIZE,
+                            height: GRID_SIZE * CELL_SIZE
+                        }}
+                    >
+                        {/* 绘制蛇 */}
+                        {snake.map((segment, index) => (
+                            <div
+                                key={index}
+                                className={`absolute ${index === 0 ? 'bg-green-400' : 'bg-green-600'}`}
+                                style={{
+                                    width: CELL_SIZE - 2,
+                                    height: CELL_SIZE - 2,
+                                    left: segment.x * CELL_SIZE + 1,
+                                    top: segment.y * CELL_SIZE + 1
+                                }}
+                            />
+                        ))}
 
-                <div className="flex justify-center mb-6">
-                    <div className="bg-black bg-opacity-30 p-6 rounded-xl shadow-2xl border border-green-500">
-                        <canvas
-                            ref={canvasRef}
-                            width={600}
-                            height={400}
-                            className="border border-green-400 rounded-lg shadow-lg"
+                        {/* 绘制食物 */}
+                        <div
+                            className="absolute bg-red-500 rounded-full"
+                            style={{
+                                width: CELL_SIZE - 2,
+                                height: CELL_SIZE - 2,
+                                left: food.x * CELL_SIZE + 1,
+                                top: food.y * CELL_SIZE + 1
+                            }}
                         />
                     </div>
-                </div>
 
-                <div className="text-center">
-                    {!gameState.gameStarted && !gameState.gameOver && (
-                        <div className="space-y-4">
-                            <button
-                                onClick={startGame}
-                                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-12 py-4 rounded-xl text-xl font-bold transition-all transform hover:scale-105 shadow-lg"
-                            >
-                                🎮 {t.snake.gameOver.restart}
-                            </button>
+                    {gameOver && (
+                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                            <div className="text-center">
+                                <h2 className="text-3xl font-bold text-red-400 mb-4">游戏结束!</h2>
+                                <p className="text-white mb-4">最终得分: {score}</p>
 
-                            {/* 游戏模式选择 */}
-                            <div className="flex justify-center space-x-4 mt-4">
-                                <button
-                                    onClick={() => changeGameMode('classic')}
-                                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${gameState.gameMode === 'classic'
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                        }`}
-                                >
-                                    {t.snake.gameModes.classic}
-                                </button>
-                                <button
-                                    onClick={() => changeGameMode('obstacle')}
-                                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${gameState.gameMode === 'obstacle'
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                        }`}
-                                >
-                                    {t.snake.gameModes.obstacle}
-                                </button>
-                                <button
-                                    onClick={() => changeGameMode('speed')}
-                                    className={`px-4 py-2 rounded-lg font-semibold transition-colors ${gameState.gameMode === 'speed'
-                                            ? 'bg-green-600 text-white'
-                                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                        }`}
-                                >
-                                    {t.snake.gameModes.speed}
-                                </button>
+                                {!showScoreSubmission ? (
+                                    <div className="space-y-4">
+                                        <button
+                                            onClick={() => setShowScoreSubmission(true)}
+                                            className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors mr-4"
+                                        >
+                                            🏆 提交分数
+                                        </button>
+                                        <button
+                                            onClick={startGame}
+                                            className="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors"
+                                        >
+                                            重新开始
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <input
+                                                type="text"
+                                                value={playerName}
+                                                onChange={(e) => setPlayerName(e.target.value)}
+                                                placeholder="请输入你的名字"
+                                                className="px-4 py-2 border border-gray-300 rounded-lg text-black"
+                                                maxLength={20}
+                                            />
+                                        </div>
+                                        <div className="space-x-4">
+                                            <button
+                                                onClick={submitScore}
+                                                disabled={isSubmitting}
+                                                className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                                            >
+                                                {isSubmitting ? '提交中...' : '提交分数'}
+                                            </button>
+                                            <button
+                                                onClick={() => setShowScoreSubmission(false)}
+                                                className="px-6 py-3 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-700 transition-colors"
+                                            >
+                                                取消
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
-
-                    {gameState.gameOver && gameState.showSubmitForm && (
-                        <div className="bg-black bg-opacity-80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl max-w-md mx-auto border border-green-500">
-                            <h2 className="text-3xl font-bold text-white mb-6">{t.snake.gameOver.title}</h2>
-                            <div className="space-y-3 mb-6">
-                                <p className="text-green-300 text-lg">{t.snake.gameOver.finalScore}: <span className="text-yellow-400 font-bold">{gameState.score}</span></p>
-                                <p className="text-green-300 text-lg">{t.snake.stats.length}: <span className="text-cyan-400 font-bold">{gameState.snake.length}</span></p>
-                            </div>
-
-                            <input
-                                type="text"
-                                value={gameState.playerName}
-                                onChange={(e) => setGameState(prev => ({ ...prev, playerName: e.target.value }))}
-                                placeholder={t.snake.gameOver.enterName}
-                                className="w-full px-4 py-3 border border-green-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-black bg-opacity-50 text-white placeholder-gray-400"
-                            />
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={submitScore}
-                                    className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105"
-                                >
-                                    {t.common.submit}
-                                </button>
-                                <button
-                                    onClick={() => setGameState(prev => ({ ...prev, showSubmitForm: false }))}
-                                    className="bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-6 py-2 rounded-lg font-semibold transition-all transform hover:scale-105"
-                                >
-                                    {t.common.cancel}
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {gameState.gameOver && !gameState.showSubmitForm && (
-                        <div className="bg-black bg-opacity-80 backdrop-blur-sm p-8 rounded-2xl shadow-2xl max-w-md mx-auto border border-green-500">
-                            <h2 className="text-3xl font-bold text-white mb-6">{t.snake.gameOver.title}</h2>
-                            <div className="space-y-3 mb-6">
-                                <p className="text-green-300 text-lg">{t.snake.gameOver.finalScore}: <span className="text-yellow-400 font-bold">{gameState.score}</span></p>
-                                <p className="text-green-300 text-lg">{t.snake.stats.length}: <span className="text-cyan-400 font-bold">{gameState.snake.length}</span></p>
-                            </div>
-
-                            <button
-                                onClick={() => setGameState(prev => ({ ...prev, showSubmitForm: true }))}
-                                className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 mr-3"
-                            >
-                                📊 {t.snake.gameOver.submitScore}
-                            </button>
-                            <button
-                                onClick={startGame}
-                                className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-8 py-3 rounded-lg font-semibold transition-all transform hover:scale-105 mt-4"
-                            >
-                                🔄 {t.snake.gameOver.restart}
-                            </button>
-                        </div>
-                    )}
                 </div>
-
-                {/* 移动端控制按钮 */}
-                <div className="md:hidden mt-6">
-                    <div className="grid grid-cols-3 gap-4 max-w-xs mx-auto">
-                        <div></div>
-                        <button
-                            onClick={() => handleDirection('UP')}
-                            className="bg-green-600 text-white p-4 rounded-lg text-xl font-bold hover:bg-green-700 transition-colors"
-                        >
-                            ↑
-                        </button>
-                        <div></div>
-                        <button
-                            onClick={() => handleDirection('LEFT')}
-                            className="bg-green-600 text-white p-4 rounded-lg text-xl font-bold hover:bg-green-700 transition-colors"
-                        >
-                            ←
-                        </button>
-                        <button
-                            onClick={() => handleDirection('DOWN')}
-                            className="bg-green-600 text-white p-4 rounded-lg text-xl font-bold hover:bg-green-700 transition-colors"
-                        >
-                            ↓
-                        </button>
-                        <button
-                            onClick={() => handleDirection('RIGHT')}
-                            className="bg-green-600 text-white p-4 rounded-lg text-xl font-bold hover:bg-green-700 transition-colors"
-                        >
-                            →
-                        </button>
-                    </div>
-                </div>
-
-                <div className="mt-8 bg-black bg-opacity-50 backdrop-blur-sm p-8 rounded-2xl shadow-2xl border border-green-500">
-                    <h3 className="text-2xl font-bold text-white mb-6">{t.snake.instructions.title}</h3>
-                    <div className="grid md:grid-cols-2 gap-8">
-                        <div>
-                            <h4 className="font-semibold text-green-300 mb-3 text-lg">{t.snake.instructions.controls}</h4>
-                            <ul className="text-gray-300 space-y-2">
-                                <li>• <span className="text-yellow-400">WASD</span> 或 <span className="text-yellow-400">方向键</span>：{t.snake.controls}</li>
-                                <li>• <span className="text-green-400">空格键</span>：暂停游戏</li>
-                                <li>• <span className="text-red-400">避免撞墙</span>：不要撞到墙壁或自己的身体</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-semibold text-green-300 mb-3 text-lg">{t.snake.instructions.modes}</h4>
-                            <ul className="text-gray-300 space-y-2">
-                                <li>• <span className="text-blue-400">{t.snake.gameModes.classic}</span>：经典模式，无特殊规则</li>
-                                <li>• <span className="text-red-400">{t.snake.gameModes.obstacle}</span>：障碍模式，有固定障碍物</li>
-                                <li>• <span className="text-purple-400">{t.snake.gameModes.speed}</span>：极速模式，速度会逐渐增加</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-semibold text-green-300 mb-3 text-lg">{t.snake.instructions.specialFood}</h4>
-                            <ul className="text-gray-300 space-y-2">
-                                <li>• <span className="text-orange-400">🍊 橙色食物</span>：{t.snake.specialFood.speed}</li>
-                                <li>• <span className="text-yellow-400">⭐ 金色食物</span>：{t.snake.specialFood.double}</li>
-                                <li>• <span className="text-blue-400">🛡️ 蓝色食物</span>：{t.snake.specialFood.shield}</li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-semibold text-green-300 mb-3 text-lg">{t.snake.instructions.difficulty}</h4>
-                            <ul className="text-gray-300 space-y-2">
-                                <li>• 每吃5个食物，等级提升</li>
-                                <li>• 等级越高，蛇移动速度越快</li>
-                                <li>• 特殊食物出现概率随等级增加</li>
-                                <li>• 障碍模式中障碍物会逐渐增多</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            )}
         </div>
     )
 } 
