@@ -44,6 +44,9 @@ export default function Navigation() {
             <Link href="/bottles" className="hover:text-blue-200 transition-colors">
               🥤 {language === 'zh' ? '漂流瓶' : 'Bottles'}
             </Link>
+            <Link href="/drawing" className="hover:text-blue-200 transition-colors">
+              🎨 {language === 'zh' ? '涂鸦墙' : 'Drawing Wall'}
+            </Link>
           </div>
 
           <div className="flex items-center gap-2">

@@ -81,6 +81,10 @@ export default function About() {
                                     <span className="text-xl">💻</span>
                                     <span>GitHub - 代码仓库</span>
                                 </a>
+                                <a href="https://music.163.com/#/user/home?id=645738935" target="_blank" rel="noopener noreferrer" className="bg-white bg-opacity-20 px-6 py-3 rounded-lg hover:bg-opacity-30 transition-all flex items-center gap-2">
+                                    <span className="text-xl">🎶</span>
+                                    <span>网易云音乐</span>
+                                </a>
                             </div>
                         </div>
                     </div>

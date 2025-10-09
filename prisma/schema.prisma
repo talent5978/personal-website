@@ -86,4 +86,17 @@ model BottleMessage {
 
   @@index([bottleId])
   @@index([createdAt])
+}
+
+model Drawing {
+  id        Int      @id @default(autoincrement())
+  x         Float    // X坐标
+  y         Float    // Y坐标
+  color     String   // 颜色
+  size      Int      // 笔刷大小
+  type      String   // 类型: "draw" 或 "erase"
+  ip        String?  // IP地址（可选）
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 } 

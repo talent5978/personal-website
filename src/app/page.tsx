@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { useLanguage } from '@/components/LanguageProvider'
 import { GardenProvider } from '@/components/GardenContext'
 import Garden from '@/components/Garden'
+import DrawingWall from '@/components/DrawingWall'
+import Ocean from '@/components/Ocean'
 import React from 'react'
 
 export default function Home() {
@@ -78,6 +80,10 @@ export default function Home() {
                     <a href="https://github.com/talent5978" target="_blank" rel="noopener noreferrer" className="bg-white bg-opacity-20 px-6 py-3 rounded-lg hover:bg-opacity-30 transition-all flex items-center gap-2">
                       <span className="text-xl">💻</span>
                       <span>GitHub - 代码仓库</span>
+                    </a>
+                    <a href="https://music.163.com/#/user/home?id=645738935" target="_blank" rel="noopener noreferrer" className="bg-white bg-opacity-20 px-6 py-3 rounded-lg hover:bg-opacity-30 transition-all flex items-center gap-2">
+                      <span className="text-xl">🎶</span>
+                      <span>网易云音乐</span>
                     </a>
                     <a href="/about" className="bg-white bg-opacity-20 px-6 py-3 rounded-lg hover:bg-opacity-30 transition-all flex items-center gap-2">
                       <span className="text-xl">👤</span>
@@ -196,11 +202,20 @@ export default function Home() {
           </div>
 
 
+          {/* 漂流瓶海洋 */}
+          <div className="mt-12">
+            <Ocean className="max-w-4xl mx-auto" />
+          </div>
+
           {/* 社区花园区域 */}
           <div className="mt-12">
             <Garden className="max-w-4xl mx-auto" />
           </div>
 
+          {/* 公共涂鸦墙 */}
+          <div className="mt-12">
+            <DrawingWall className="max-w-4xl mx-auto" />
+          </div>
 
           {/* 帖子 Emoji 墙 */}
           <EmojiWall />
@@ -209,7 +224,7 @@ export default function Home() {
           <div className="mt-12">
             <div className="bg-gradient-to-r from-pink-500 to-rose-600 p-6 rounded-xl text-white">
               <h3 className="text-xl font-bold mb-4">📱 关注我的动态</h3>
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-3 gap-4">
                 <a href="https://www.xiaohongshu.com/user/profile/60c2f5420000000001002382?xsec_token=ABcIOnOiII5x4flIQclLvfQo01hE-o6JJrsS3VT6ieo7M%3D&xsec_source=pc_search" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-white bg-opacity-20 p-4 rounded-lg hover:bg-opacity-30 transition-all">
                   <span className="text-2xl">📱</span>
                   <div>
@@ -222,6 +237,13 @@ export default function Home() {
                   <div>
                     <div className="font-semibold">抖音</div>
                     <div className="text-sm opacity-90">运动达人</div>
+                  </div>
+                </a>
+                <a href="https://music.163.com/#/user/home?id=645738935" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 bg-white bg-opacity-20 p-4 rounded-lg hover:bg-opacity-30 transition-all">
+                  <span className="text-2xl">🎶</span>
+                  <div>
+                    <div className="font-semibold">网易云音乐</div>
+                    <div className="text-sm opacity-90">音乐分享</div>
                   </div>
                 </a>
               </div>
