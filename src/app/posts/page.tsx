@@ -135,30 +135,29 @@ export default function Posts() {
                         </div>
                     ) : (
                         currentPosts.map(post => (
-                            <div
+                            <Link
                                 key={post.id}
-                                className="bg-black bg-opacity-30 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-orange-500 hover:border-orange-400 transition-all transform hover:scale-105"
+                                href={`/posts/${post.id}`}
+                                className="block bg-black bg-opacity-30 backdrop-blur-sm p-6 rounded-xl shadow-lg border border-orange-500 hover:border-orange-400 transition-all transform hover:scale-105 cursor-pointer"
                             >
                                 <div className="flex justify-between items-start mb-4">
                                     <h3 className="text-xl font-bold text-white hover:text-orange-300 transition-colors">
-                                        <Link href={`/posts/${post.id}`}>
-                                            {post.title}
-                                        </Link>
+                                        {post.title}
                                     </h3>
                                     <div className="text-sm text-gray-400">
                                         {formatTimeAgo(post.createdAt)}
                                     </div>
                                 </div>
-                                
+
                                 <p className="text-gray-300 mb-4 line-clamp-3">
                                     {post.content.length > 200 ? `${post.content.substring(0, 200)}...` : post.content}
                                 </p>
-                                
+
                                 <div className="flex justify-between items-center text-sm text-gray-400">
                                     <span>{t.forum.post.author}: {post.author}</span>
                                     <span>💬 {post._count.comments} {t.forum.post.comments}</span>
                                 </div>
-                            </div>
+                            </Link>
                         ))
                     )}
                 </div>
@@ -173,11 +172,11 @@ export default function Posts() {
                         >
                             {t.forum.pagination.previous}
                         </button>
-                        
+
                         <span className="text-orange-200 px-4">
                             {t.forum.pagination.page} {currentPage} {t.forum.pagination.of} {totalPages} {t.forum.pagination.page}
                         </span>
-                        
+
                         <button
                             onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
                             disabled={currentPage === totalPages}
