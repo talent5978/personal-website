@@ -9,9 +9,12 @@ export default function Navigation() {
   return (
     <nav className="bg-gray-900 text-white p-4 shadow-lg sticky top-0 z-50">
       <div className="max-w-6xl mx-auto flex flex-wrap gap-3 justify-between items-center">
-        <div className="text-xl font-bold">
+        <div className="text-xl font-bold flex items-center gap-2">
+          <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+            L
+          </div>
           <Link href="/" className="hover:text-blue-200 transition-colors">
-            {language === 'zh' ? '我的网站' : 'My Website'}
+            {language === 'zh' ? 'Lenovo的网站' : 'Lenovo\'s Website'}
           </Link>
         </div>
 

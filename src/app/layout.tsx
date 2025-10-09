@@ -7,8 +7,8 @@ import Navigation from '@/components/Navigation'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'My Personal Website',
-  description: 'A full-stack personal website with games and forum',
+  title: 'Lenovo\'s Personal Website - 运动达人 & 全栈开发者',
+  description: 'Lenovo的个人网站 - 全栈开发者、极限运动爱好者、音乐人、摄影师。包含游戏开发、社区论坛、技能展示等丰富内容。',
 }
 
 export default function RootLayout({
