@@ -512,7 +512,7 @@ export default function TetrisGame() {
                                     height: cellSize,
                                     left: x * cellSize,
                                     top: y * cellSize,
-                                    backgroundColor: cell
+                                    backgroundColor: cell as string
                                 }}
                             />
                         )
