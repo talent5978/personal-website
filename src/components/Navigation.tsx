@@ -18,22 +18,25 @@ export default function Navigation() {
         <div className="flex flex-wrap items-center gap-3 sm:gap-4">
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <Link href="/" className="hover:text-blue-200 transition-colors">
-              {t.nav.home}
+              🏠 {t.nav.home}
             </Link>
             <Link href="/game" className="hover:text-blue-200 transition-colors">
-              {t.nav.snake}
+              🐍 {t.nav.snake}
+            </Link>
+            <Link href="/tetris" className="hover:text-blue-200 transition-colors">
+              🧩 {language === 'zh' ? '俄罗斯方块' : 'Tetris'}
             </Link>
             <Link href="/survivor" className="hover:text-blue-200 transition-colors">
-              {t.nav.survivor}
+              ⚔️ {t.nav.survivor}
             </Link>
             <Link href="/leaderboard" className="hover:text-blue-200 transition-colors">
-              {t.nav.leaderboard}
+              🏆 {t.nav.leaderboard}
             </Link>
             <Link href="/posts" className="hover:text-blue-200 transition-colors">
-              {t.nav.forum}
+              💬 {t.nav.forum}
             </Link>
             <Link href="/bottles" className="hover:text-blue-200 transition-colors">
-              🥤 漂流瓶
+              🥤 {language === 'zh' ? '漂流瓶' : 'Bottles'}
             </Link>
           </div>
 
@@ -41,8 +44,8 @@ export default function Navigation() {
             <button
               onClick={() => changeLanguage('zh')}
               className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${language === 'zh'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
             >
               中文
@@ -50,8 +53,8 @@ export default function Navigation() {
             <button
               onClick={() => changeLanguage('en')}
               className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${language === 'en'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
             >
               English

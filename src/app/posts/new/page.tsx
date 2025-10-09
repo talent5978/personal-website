@@ -17,6 +17,9 @@ export default function NewPost() {
     const [showSeedAnimation, setShowSeedAnimation] = useState(false)
     const [emoji, setEmoji] = useState('')
 
+    // 随机emoji列表
+    const randomEmojis = ['📝', '💭', '🤔', '💡', '🎯', '🌟', '🔥', '💪', '🎉', '🌈', '🌸', '🍀', '🎨', '🎵', '📚', '🔍', '💎', '🚀', '⭐', '🎪']
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
@@ -54,7 +57,7 @@ export default function NewPost() {
                     content: content.trim(),
                     author: author.trim(),
                     tempUserId: tempUserId,
-                    emoji: emoji.trim()
+                    emoji: emoji.trim() || randomEmojis[Math.floor(Math.random() * randomEmojis.length)]
                 }),
             })
 
@@ -180,7 +183,7 @@ export default function NewPost() {
                                 placeholder="例如：🌸 🎮 🧠"
                                 maxLength={4}
                             />
-                            <div className="text-gray-400 text-sm mt-1">选择一个代表帖子的表情，留空则默认 📝</div>
+                            <div className="text-gray-400 text-sm mt-1">选择一个代表帖子的表情，留空则随机分配一个</div>
                         </div>
 
                         {/* 按钮组 */}

@@ -1,12 +1,18 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useLanguage } from '@/components/LanguageProvider'
 
 const GRID_SIZE = 20
 const CELL_SIZE = 20
 const INITIAL_SNAKE = [{ x: 10, y: 10 }]
 const INITIAL_DIRECTION = { x: 1, y: 0 }
+
+// 触摸控制相关
+interface TouchPosition {
+    x: number
+    y: number
+}
 
 export default function SnakeGame() {
     const { t } = useLanguage()
@@ -23,6 +29,12 @@ export default function SnakeGame() {
     const [level, setLevel] = useState(1)
     const gameLoopRef = useRef<NodeJS.Timeout>()
     const startTimeRef = useRef<number>(0)
+
+    // 触摸控制相关状态
+    const [touchStart, setTouchStart] = useState<TouchPosition | null>(null)
+    const [touchEnd, setTouchEnd] = useState<TouchPosition | null>(null)
+    const [isMobile, setIsMobile] = useState(false)
+    const [gameSize, setGameSize] = useState(400)
 
     // 计算难度等级
     const calculateLevel = (time: number) => {
@@ -56,7 +68,7 @@ export default function SnakeGame() {
     }
 
     // 游戏主循环
-    const gameLoop = () => {
+    const gameLoop = useCallback(() => {
         if (gameOver) return
 
         // 更新游戏时间和等级
@@ -94,7 +106,7 @@ export default function SnakeGame() {
 
             return newSnake
         })
-    }
+    }, [gameOver, direction, food, level, snake])
 
     // 提交分数到排行榜
     const submitScore = async () => {
@@ -148,6 +160,76 @@ export default function SnakeGame() {
         startTimeRef.current = Date.now()
     }
 
+    // 检测设备类型和计算游戏区域大小
+    useEffect(() => {
+        const checkMobile = () => {
+            const mobile = window.innerWidth <= 768 || 'ontouchstart' in window
+            setIsMobile(mobile)
+
+            // 计算游戏区域大小
+            const maxSize = Math.min(window.innerWidth - 40, window.innerHeight - 200)
+            const size = Math.min(maxSize, 400)
+            setGameSize(size)
+        }
+        checkMobile()
+        window.addEventListener('resize', checkMobile)
+        return () => window.removeEventListener('resize', checkMobile)
+    }, [])
+
+    // 触摸控制处理
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (!gameStarted) return
+        e.preventDefault()
+        const touch = e.touches[0]
+        setTouchStart({ x: touch.clientX, y: touch.clientY })
+    }
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!gameStarted) return
+        e.preventDefault()
+    }
+
+    const handleTouchEnd = (e: React.TouchEvent) => {
+        if (!gameStarted || !touchStart) return
+        e.preventDefault()
+        const touch = e.changedTouches[0]
+        setTouchEnd({ x: touch.clientX, y: touch.clientY })
+
+        // 计算滑动方向和距离
+        const deltaX = touch.clientX - touchStart.x
+        const deltaY = touch.clientY - touchStart.y
+        const minSwipeDistance = 50 // 最小滑动距离
+
+        if (Math.abs(deltaX) > minSwipeDistance || Math.abs(deltaY) > minSwipeDistance) {
+            if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                // 水平滑动
+                if (deltaX > 0 && direction.x === 0) {
+                    setDirection({ x: 1, y: 0 }) // 右
+                } else if (deltaX < 0 && direction.x === 0) {
+                    setDirection({ x: -1, y: 0 }) // 左
+                }
+            } else {
+                // 垂直滑动
+                if (deltaY > 0 && direction.y === 0) {
+                    setDirection({ x: 0, y: 1 }) // 下
+                } else if (deltaY < 0 && direction.y === 0) {
+                    setDirection({ x: 0, y: -1 }) // 上
+                }
+            }
+        }
+
+        setTouchStart(null)
+        setTouchEnd(null)
+    }
+
+    // 方向按钮控制
+    const handleDirectionClick = (newDirection: { x: number; y: number }) => {
+        if (!gameStarted) return
+        // 防止反向移动
+        if (direction.x === -newDirection.x && direction.y === -newDirection.y) return
+        setDirection(newDirection)
+    }
+
     // 键盘控制
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
@@ -188,77 +270,134 @@ export default function SnakeGame() {
                 clearInterval(gameLoopRef.current)
             }
         }
-    }, [gameStarted, gameOver, direction, food, level])
+    }, [gameStarted, gameOver, direction, food, level, gameLoop])
 
     return (
-        <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-4">
-            <div className="text-center mb-8">
-                <h1 className="text-4xl font-bold text-green-400 mb-4">贪吃蛇</h1>
-                <p className="text-gray-400 mb-4">使用 WASD 或方向键控制蛇的移动</p>
-                <div className="text-xl text-white mb-2">得分: {score}</div>
-                <div className="text-lg text-green-300 mb-2">等级: {level}</div>
-                <div className="text-lg text-blue-300 mb-4">时间: {Math.floor(gameTime)}s</div>
+        <div className="min-h-screen bg-gray-900 flex flex-col items-center justify-center p-2 sm:p-4">
+            <div className="text-center mb-4 sm:mb-8">
+                <h1 className="text-2xl sm:text-4xl font-bold text-green-400 mb-2 sm:mb-4">贪吃蛇</h1>
+                <p className="text-sm sm:text-base text-gray-400 mb-2 sm:mb-4">
+                    {isMobile ? '滑动屏幕或使用方向按钮控制' : '使用 WASD 或方向键控制蛇的移动'}
+                </p>
+                <div className="flex flex-wrap justify-center gap-4 text-sm sm:text-base">
+                    <div className="text-white">得分: {score}</div>
+                    <div className="text-green-300">等级: {level}</div>
+                    <div className="text-blue-300">时间: {Math.floor(gameTime)}s</div>
+                </div>
             </div>
 
             {!gameStarted ? (
                 <button
                     onClick={startGame}
-                    className="px-8 py-4 bg-green-600 text-white text-xl font-bold rounded-lg hover:bg-green-700 transition-colors"
+                    className="px-6 sm:px-8 py-3 sm:py-4 bg-green-600 text-white text-lg sm:text-xl font-bold rounded-lg hover:bg-green-700 transition-colors"
                 >
                     开始游戏
                 </button>
             ) : (
-                <div className="relative">
-                    <div
-                        className="bg-gray-800 border-2 border-gray-600"
-                        style={{
-                            width: GRID_SIZE * CELL_SIZE,
-                            height: GRID_SIZE * CELL_SIZE
-                        }}
-                    >
-                        {/* 绘制蛇 */}
-                        {snake.map((segment, index) => (
-                            <div
-                                key={index}
-                                className={`absolute ${index === 0 ? 'bg-green-400' : 'bg-green-600'}`}
-                                style={{
-                                    width: CELL_SIZE - 2,
-                                    height: CELL_SIZE - 2,
-                                    left: segment.x * CELL_SIZE + 1,
-                                    top: segment.y * CELL_SIZE + 1
-                                }}
-                            />
-                        ))}
-
-                        {/* 绘制食物 */}
+                <div className="flex flex-col items-center">
+                    {/* 游戏区域 */}
+                    <div className="relative mb-4">
                         <div
-                            className="absolute bg-red-500 rounded-full"
+                            className="bg-gray-800 border-2 border-gray-600 touch-none"
                             style={{
-                                width: CELL_SIZE - 2,
-                                height: CELL_SIZE - 2,
-                                left: food.x * CELL_SIZE + 1,
-                                top: food.y * CELL_SIZE + 1
+                                width: gameSize,
+                                height: gameSize
                             }}
-                        />
+                            onTouchStart={handleTouchStart}
+                            onTouchMove={handleTouchMove}
+                            onTouchEnd={handleTouchEnd}
+                        >
+                            {/* 绘制蛇 */}
+                            {snake.map((segment, index) => {
+                                const cellSize = gameSize / GRID_SIZE
+                                return (
+                                    <div
+                                        key={index}
+                                        className={`absolute ${index === 0 ? 'bg-green-400' : 'bg-green-600'}`}
+                                        style={{
+                                            width: cellSize - 2,
+                                            height: cellSize - 2,
+                                            left: segment.x * cellSize + 1,
+                                            top: segment.y * cellSize + 1
+                                        }}
+                                    />
+                                )
+                            })}
+
+                            {/* 绘制食物 */}
+                            {(() => {
+                                const cellSize = gameSize / GRID_SIZE
+                                return (
+                                    <div
+                                        className="absolute bg-red-500 rounded-full"
+                                        style={{
+                                            width: cellSize - 2,
+                                            height: cellSize - 2,
+                                            left: food.x * cellSize + 1,
+                                            top: food.y * cellSize + 1
+                                        }}
+                                    />
+                                )
+                            })()}
+                        </div>
                     </div>
 
+                    {/* 手机端方向控制按钮 */}
+                    {isMobile && (
+                        <div className="grid grid-cols-3 gap-2 mb-4">
+                            <div></div>
+                            <button
+                                onClick={() => handleDirectionClick({ x: 0, y: -1 })}
+                                className="w-12 h-12 bg-gray-700 text-white rounded-lg flex items-center justify-center text-xl font-bold hover:bg-gray-600 transition-colors"
+                            >
+                                ↑
+                            </button>
+                            <div></div>
+
+                            <button
+                                onClick={() => handleDirectionClick({ x: -1, y: 0 })}
+                                className="w-12 h-12 bg-gray-700 text-white rounded-lg flex items-center justify-center text-xl font-bold hover:bg-gray-600 transition-colors"
+                            >
+                                ←
+                            </button>
+                            <div className="w-12 h-12 flex items-center justify-center">
+                                <div className="w-8 h-8 bg-gray-600 rounded-full"></div>
+                            </div>
+                            <button
+                                onClick={() => handleDirectionClick({ x: 1, y: 0 })}
+                                className="w-12 h-12 bg-gray-700 text-white rounded-lg flex items-center justify-center text-xl font-bold hover:bg-gray-600 transition-colors"
+                            >
+                                →
+                            </button>
+
+                            <div></div>
+                            <button
+                                onClick={() => handleDirectionClick({ x: 0, y: 1 })}
+                                className="w-12 h-12 bg-gray-700 text-white rounded-lg flex items-center justify-center text-xl font-bold hover:bg-gray-600 transition-colors"
+                            >
+                                ↓
+                            </button>
+                            <div></div>
+                        </div>
+                    )}
+
                     {gameOver && (
-                        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                            <div className="text-center">
-                                <h2 className="text-3xl font-bold text-red-400 mb-4">游戏结束!</h2>
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                            <div className="text-center bg-gray-800 rounded-lg p-6 max-w-sm w-full">
+                                <h2 className="text-2xl sm:text-3xl font-bold text-red-400 mb-4">游戏结束!</h2>
                                 <p className="text-white mb-4">最终得分: {score}</p>
 
                                 {!showScoreSubmission ? (
-                                    <div className="space-y-4">
+                                    <div className="space-y-3">
                                         <button
                                             onClick={() => setShowScoreSubmission(true)}
-                                            className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors mr-4"
+                                            className="w-full px-4 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors"
                                         >
                                             🏆 提交分数
                                         </button>
                                         <button
                                             onClick={startGame}
-                                            className="px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors"
+                                            className="w-full px-4 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors"
                                         >
                                             重新开始
                                         </button>
@@ -271,21 +410,21 @@ export default function SnakeGame() {
                                                 value={playerName}
                                                 onChange={(e) => setPlayerName(e.target.value)}
                                                 placeholder="请输入你的名字"
-                                                className="px-4 py-2 border border-gray-300 rounded-lg text-black"
+                                                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-black"
                                                 maxLength={20}
                                             />
                                         </div>
-                                        <div className="space-x-4">
+                                        <div className="space-y-2">
                                             <button
                                                 onClick={submitScore}
                                                 disabled={isSubmitting}
-                                                className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
+                                                className="w-full px-4 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-colors disabled:opacity-50"
                                             >
                                                 {isSubmitting ? '提交中...' : '提交分数'}
                                             </button>
                                             <button
                                                 onClick={() => setShowScoreSubmission(false)}
-                                                className="px-6 py-3 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-700 transition-colors"
+                                                className="w-full px-4 py-3 bg-gray-600 text-white font-bold rounded-lg hover:bg-gray-700 transition-colors"
                                             >
                                                 取消
                                             </button>

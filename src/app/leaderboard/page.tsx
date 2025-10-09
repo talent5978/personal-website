@@ -15,7 +15,7 @@ export default function Leaderboard() {
     const { t } = useLanguage()
     const [scores, setScores] = useState<Score[]>([])
     const [loading, setLoading] = useState(true)
-    const [selectedGame, setSelectedGame] = useState<'all' | 'snake' | 'survivor'>('all')
+    const [selectedGame, setSelectedGame] = useState<'all' | 'snake' | 'tetris' | 'survivor'>('all')
 
     useEffect(() => {
         fetchScores()
@@ -44,6 +44,8 @@ export default function Leaderboard() {
         switch (gameType) {
             case 'snake':
                 return '🐍'
+            case 'tetris':
+                return '🧩'
             case 'survivor':
                 return '⚔️'
             default:
@@ -80,31 +82,37 @@ export default function Leaderboard() {
                 <div className="flex justify-center space-x-4 mb-6">
                     <button
                         onClick={() => setSelectedGame('all')}
-                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                            selectedGame === 'all'
+                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${selectedGame === 'all'
                                 ? 'bg-blue-600 text-white'
                                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
+                            }`}
                     >
                         {t.leaderboard.allGames}
                     </button>
                     <button
                         onClick={() => setSelectedGame('snake')}
-                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                            selectedGame === 'snake'
+                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${selectedGame === 'snake'
                                 ? 'bg-green-600 text-white'
                                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
+                            }`}
                     >
                         {t.leaderboard.snake}
                     </button>
                     <button
+                        onClick={() => setSelectedGame('tetris')}
+                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${selectedGame === 'tetris'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                    >
+                        🧩 俄罗斯方块
+                    </button>
+                    <button
                         onClick={() => setSelectedGame('survivor')}
-                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${
-                            selectedGame === 'survivor'
+                        className={`px-4 py-2 rounded-lg font-semibold transition-colors ${selectedGame === 'survivor'
                                 ? 'bg-red-600 text-white'
                                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
+                            }`}
                     >
                         {t.leaderboard.survivor}
                     </button>
@@ -133,12 +141,11 @@ export default function Leaderboard() {
                                     filteredScores.map((score, index) => (
                                         <tr key={score.id} className="border-b border-blue-800 hover:bg-blue-900 hover:bg-opacity-30 transition-colors">
                                             <td className="py-3 px-4">
-                                                <span className={`inline-block w-8 h-8 rounded-full text-center leading-8 font-bold ${
-                                                    index === 0 ? 'bg-yellow-500 text-black' :
-                                                    index === 1 ? 'bg-gray-400 text-black' :
-                                                    index === 2 ? 'bg-orange-600 text-white' :
-                                                    'bg-blue-600 text-white'
-                                                }`}>
+                                                <span className={`inline-block w-8 h-8 rounded-full text-center leading-8 font-bold ${index === 0 ? 'bg-yellow-500 text-black' :
+                                                        index === 1 ? 'bg-gray-400 text-black' :
+                                                            index === 2 ? 'bg-orange-600 text-white' :
+                                                                'bg-blue-600 text-white'
+                                                    }`}>
                                                     {index + 1}
                                                 </span>
                                             </td>

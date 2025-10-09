@@ -37,6 +37,17 @@ export default function Home() {
               </Link>
             </div>
 
+            <div className="bg-gradient-to-r from-blue-500 to-cyan-600 p-6 rounded-lg text-white">
+              <h3 className="text-2xl font-bold mb-4">🧩 俄罗斯方块</h3>
+              <p className="text-blue-100 mb-4">经典益智游戏，挑战你的反应速度和策略思维</p>
+              <Link
+                href="/tetris"
+                className="inline-block bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-4 py-2 rounded-lg transition-all transform hover:scale-105"
+              >
+                🧩 开始游戏
+              </Link>
+            </div>
+
             <div className="bg-gradient-to-r from-red-500 to-pink-600 p-6 rounded-lg text-white">
               <h3 className="text-2xl font-bold mb-4">{t.home.features.survivor.title}</h3>
               <p className="text-red-100 mb-4">{t.home.features.survivor.description}</p>
