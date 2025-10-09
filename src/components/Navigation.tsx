@@ -11,10 +11,10 @@ export default function Navigation() {
       <div className="max-w-6xl mx-auto flex flex-wrap gap-3 justify-between items-center">
         <div className="text-xl font-bold flex items-center gap-2">
           <div className="w-8 h-8 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-            L
+            梦
           </div>
           <Link href="/" className="hover:text-blue-200 transition-colors">
-            {language === 'zh' ? 'Lenovo的网站' : 'Lenovo\'s Website'}
+            {language === 'zh' ? '梦想家的网站' : 'Dreamer\'s Website'}
           </Link>
         </div>
 
@@ -22,6 +22,9 @@ export default function Navigation() {
           <div className="flex flex-wrap items-center gap-3 sm:gap-4">
             <Link href="/" className="hover:text-blue-200 transition-colors">
               🏠 {t.nav.home}
+            </Link>
+            <Link href="/about" className="hover:text-blue-200 transition-colors">
+              👤 {language === 'zh' ? '关于我' : 'About'}
             </Link>
             <Link href="/game" className="hover:text-blue-200 transition-colors">
               🐍 {t.nav.snake}
